@@ -15,21 +15,39 @@ Rules-Requires-Root: no
 
 Package: tor-control-panel
 Architecture: all
-Depends: anon-connection-wizard,
-         helper-scripts,
+Depends: helper-scripts,
          pkexec,
          mate-polkit,
+         privleap,
          python3,
          python3-ipy,
          python3-pyqt5,
          python3-stem,
+         python3-yaml,
          qtwayland5,
          ${misc:Depends}
+Breaks: anon-connection-wizard (<< 1:11.5-1)
+Replaces: anon-connection-wizard (<< 1:11.5-1)
+Provides: anon-connection-wizard
 Recommends: obfs4proxy, tor
-Description: Tor Control Graphical User Interface
+Description: Tor Control Graphical User Interfaces
  WARNING: Not (yet) a standalone ready to use outside of Whonix:
  .
- tor-control-panel is a Tor controller.
+ anon-connection-wizard (ACW) is a Tor-launcher-like application that helps
+ users in different Internet environments connect to the Tor network. It helps
+ user to configure Tor to use a proxy and/or Tor bridges. This application is
+ especially useful for system Tor users who would like to run the standalone
+ core Tor with different torified applications. The wizard can be run at any
+ time to change the connection configuration.
+ .
+ tor-control-panel is a Tor controller. It provides the same functionality as
+ anon-connection-wizard, but in an "expert mode" user interface that is much
+ faster to use. It can also stop and restart Tor, display Tor logs, launch
+ onioncircuits to view active Tor circuits, and send NEWNYM signals to Tor to
+ request new circuits to be used for all new connections.
+ .
+ Both tools create and modify a Tor settings file:
+ `/usr/local/etc/torrc.d/40_tor_control_panel.conf`
  .
  tor-control-panel is produced independently from the Tor anonymity
  software and carries no guarantee from The Tor Project about quality,
