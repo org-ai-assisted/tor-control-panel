@@ -3,7 +3,9 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, subprocess, fcntl
+import os, fcntl
+
+from . import privilege
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix=True
@@ -96,19 +98,14 @@ def _write_disable_network(value):
 def set_enabled():
     _write_disable_network('0')
 
-    command = 'leaprun acw-tor-control-restart'
-    tor_status_code = subprocess.call(command, shell=True)
-
+    tor_status_code = privilege.run('acw-tor-control-restart')
     if tor_status_code != 0:
         return 'cannot_connect', tor_status_code
 
     ## we have to reload to open /run/tor/control and create /run/tor/control.authcookie
-    command = 'leaprun acw-tor-control-reload'
-    subprocess.call(command, shell=True)
+    privilege.run('acw-tor-control-reload')
 
-    command = 'leaprun acw-tor-control-status'
-    tor_status_code = subprocess.call(command, shell=True)
-
+    tor_status_code = privilege.run('acw-tor-control-status')
     if tor_status_code != 0:
         return 'cannot_connect', tor_status_code
 
@@ -123,18 +120,12 @@ set_disabled() will:
 def set_disabled():
     _write_disable_network('1')
 
-    command = 'leaprun acw-tor-control-stop'
-    subprocess.call(command, shell=True)
+    privilege.run('acw-tor-control-stop')
 
     return 'tor_disabled'
 
 def write_to_temp_then_move(content):
-    print("before:")
-    cat(torrc_file_path)
-    cat(acw_comm_file_path)
-    print(f"content to write: '{content}'")
-
-    with open(acw_comm_file_path, 'w') as comm_file:
+    with open(acw_comm_file_path, 'w', encoding="utf-8") as comm_file:
         ## Using flock here prevents another anon-connection-wizard process
         ## from trying to write to the file until acw-write-torrc is finished
         ## processing it.
@@ -142,16 +133,7 @@ def write_to_temp_then_move(content):
         comm_file.write(content)
         ## No need to unlock, acw-write-torrc deletes the original file.
 
-    print("after 1:")
-    cat(acw_comm_file_path)
-
-    command = ['leaprun', 'acw-write-torrc']
-    print("tor_status.py: executing:", ' '.join(command))
-    subprocess.check_call(command)
-
-    print("after 2:")
-
-    cat(torrc_file_path)
+    privilege.check_run('acw-write-torrc')
 
 def cat(filename):
     print(f"cat filename: '{filename}'")
