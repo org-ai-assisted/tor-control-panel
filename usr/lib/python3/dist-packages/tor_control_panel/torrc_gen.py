@@ -159,10 +159,6 @@ def gen_torrc(args):
     write_to_temp_then_move(final_torrc_content)
 
 def parse_torrc():
-    ## Make sure Torrc exists.
-    # command = 'leaprun tor-config-sane'
-    # call(command, shell=True)
-
     ## On a plain Debian / Kicksecure system the tor-control-panel torrc may
     ## not exist yet (no Whonix drop-in). Treat an absent file as "no
     ## configuration" (defaults) rather than crashing the whole GUI.
@@ -171,9 +167,15 @@ def parse_torrc():
         return ('None', 'None', '', '', '', '')
     torrc_file_contents = torrc_file_path_obj.read_text(encoding="utf-8")
     torrc_file_lines = torrc_file_contents.split("\n")
-    use_bridge = 'UseBridges' in torrc_file_contents
+    ## Detect features from active (non-comment) directives only; a commented
+    ## '# HTTPSProxy ...' or '# UseBridges' must not be mistaken for a setting
+    ## in effect (otherwise proxy_type would come back '' instead of 'None').
+    active_text = '\n'.join(line for line in torrc_file_lines
+                            if not line.strip().startswith('#'))
+    use_bridge = 'UseBridges' in active_text
+    ## The custom-bridges marker is deliberately a comment we write ourselves.
     use_custom_bridges = '# Custom bridges are used' in torrc_file_contents
-    use_proxy = 'Proxy' in torrc_file_contents
+    use_proxy = 'Proxy' in active_text
 
     ## Default to 'None' so use_bridge with no parseable Bridge line (and not
     ## custom) does not leave bridge_type as an empty string.
@@ -192,17 +194,16 @@ def parse_torrc():
                         line[1] = 'meek'
                     bridge_type = line[1]
 
-            if use_custom_bridges:
-                bridge_type = 'Custom bridges'
-    else:
-        bridge_type = 'None'
+        ## Custom bridges override any transport guessed from the Bridge lines;
+        ## decided once, not re-set on every loop iteration.
+        if use_custom_bridges:
+            bridge_type = 'Custom bridges'
 
     if use_proxy:
-        auth_check = False
         proxy_type = proxy_ip = proxy_port = proxy_username = proxy_password = ''
         for line in torrc_file_lines:
             line = line.strip()
-            if not line:
+            if not line or line.startswith('#'):
                 continue
 
             parts = line.split()
@@ -220,32 +221,23 @@ def parse_torrc():
                     rest = value[end + 1:]
                     proxy_port = rest[1:] if rest.startswith(':') else ''
                 elif ':' in value:
-                    ip_port = value.rsplit(':', 1)
-                    proxy_ip = ip_port[0]
-                    proxy_port = ip_port[1] if len(ip_port) > 1 else ''
+                    ## ':' guaranteed present, so rsplit yields exactly two.
+                    proxy_ip, proxy_port = value.rsplit(':', 1)
                 continue
 
             if key == proxy_auth[0]:  # HTTPSProxyAuthenticator
-                auth_check = True
                 if ':' in value:
-                    user_pass = value.split(':', 1)
-                    proxy_username = user_pass[0]
-                    proxy_password = user_pass[1] if len(user_pass) > 1 else ''
+                    ## ':' guaranteed present, so split yields exactly two.
+                    proxy_username, proxy_password = value.split(':', 1)
                 continue
 
             if key == proxy_auth[1]:  # Socks5ProxyUsername
-                auth_check = True
                 proxy_username = value
                 continue
 
             if key == proxy_auth[2]:  # Socks5ProxyPassword
-                auth_check = True
                 proxy_password = value
                 continue
-
-        if not auth_check:
-            proxy_username = ''
-            proxy_password = ''
 
     else:
         proxy_type = 'None'
