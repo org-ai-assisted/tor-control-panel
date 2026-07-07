@@ -19,7 +19,7 @@ import tempfile
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
-from . import tor_status, tor_bootstrap, torrc_gen, info, validators
+from . import tor_status, tor_bootstrap, torrc_gen, info, validators, privilege
 
 
 class CommandThread(QtCore.QThread):
@@ -45,9 +45,10 @@ class TorControlPanel(QDialog):
     def __init__(self):
         super(TorControlPanel, self).__init__()
 
-        ## Make sure torrc exists.
-        command = 'leaprun tor-config-sane'
-        call(command, shell=True)
+        ## Make sure the torrc drop-in / includes exist. Dispatched through the
+        ## privilege runner so it uses leaprun on Whonix/Kicksecure and pkexec
+        ## on a plain-Debian system.
+        privilege.run('tor-config-sane')
 
         self.setMinimumSize(650, 465)
 
