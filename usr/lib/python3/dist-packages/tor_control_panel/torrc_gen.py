@@ -176,11 +176,11 @@ def parse_torrc():
 
             if key in proxy_torrc:
                 proxy_type = proxies[proxy_torrc.index(key)]
-                if value.startswith('['):
+                if value.startswith('[') and ']' in value:
                     ## Bracketed IPv6 literal: [addr]:port
                     end = value.rfind(']')
-                    proxy_ip = value[1:end] if end != -1 else value
-                    rest = value[end + 1:] if end != -1 else ''
+                    proxy_ip = value[1:end]
+                    rest = value[end + 1:]
                     proxy_port = rest[1:] if rest.startswith(':') else ''
                 elif ':' in value:
                     ip_port = value.rsplit(':', 1)

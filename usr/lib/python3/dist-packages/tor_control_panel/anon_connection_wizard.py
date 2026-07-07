@@ -927,13 +927,14 @@ class AnonConnectionWizard(QWizard):
     def cancel_button_clicked(self):
         if self.bootstrap_thread:
             self.bootstrap_thread.terminate()
-
-        # Recover Tor to the status it had before anon_connection_wizard started
-        # (the wizard / bootstrap may have toggled DisableNetwork in between).
-        if Common.init_tor_status == 'tor_enabled':
-            tor_status.set_enabled()
-        elif Common.init_tor_status == 'tor_disabled':
-            tor_status.set_disabled()
+            # A bootstrap ran and may have toggled DisableNetwork; restore the
+            # status Tor had before the wizard started. If the wizard was merely
+            # opened and cancelled without starting a bootstrap, leave Tor
+            # untouched so an existing connection is not disrupted.
+            if Common.init_tor_status == 'tor_enabled':
+                tor_status.set_enabled()
+            elif Common.init_tor_status == 'tor_disabled':
+                tor_status.set_disabled()
 
     def finish_button_clicked(self):
         # The True indicates the acw has finished successfully
