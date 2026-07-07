@@ -72,7 +72,7 @@ class TorControlPanel(QDialog):
         self.message = ''
         self.tor_message = info.tor_stopped()
         self.tor_running_path = '/run/tor/tor.pid'
-        self.torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+        self.torrc_file_path = torrc_gen.torrc_path()
 
         self.button_name = ['systemd &journal', 'Tor &log', '&torrc']
 

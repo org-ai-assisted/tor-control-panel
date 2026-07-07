@@ -13,8 +13,18 @@ from .tor_status import write_to_temp_then_move
 
 whonix = os.path.exists('/usr/share/anon-gw-base-files/gateway')
 
-torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
-torrc_user_file_path = '/usr/local/etc/torrc.d/50_user.conf'
+## Where the tor-control-panel torrc drop-in lives. On Whonix / Qubes-Whonix
+## the drop-in dir is /usr/local/etc/torrc.d (used on the Gateway); on plain
+## Debian / Kicksecure, Tor's own /etc/tor/torrc.d is used (adrelanos, forum
+## post #154: torrc.d is the sustainable target, and the GUI -- unlike the
+## package -- may write Tor's config directly).
+if whonix:
+    torrc_dir = '/usr/local/etc/torrc.d'
+else:
+    torrc_dir = '/etc/tor/torrc.d'
+
+torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
+torrc_user_file_path = torrc_dir + '/50_user.conf'
 
 bridges_default_path = '/usr/share/anon-connection-wizard/bridges_default'
 

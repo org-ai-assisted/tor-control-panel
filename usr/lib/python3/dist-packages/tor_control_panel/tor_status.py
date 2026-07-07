@@ -8,13 +8,16 @@ import os, fcntl
 from . import privilege
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
-    whonix=True
+    whonix = True
 else:
-    whonix=False
+    whonix = False
 
-## TODO: code duplication
-## Should use same variable as in anon_connection_wizard.py.
-torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+## Distro-aware drop-in location, matching torrc_gen: /usr/local/etc/torrc.d on
+## Whonix, Tor's own /etc/tor/torrc.d on plain Debian / Kicksecure.
+if whonix:
+    torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+else:
+    torrc_file_path = '/etc/tor/torrc.d/40_tor_control_panel.conf'
 acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
 
