@@ -14,7 +14,7 @@ import os
 
 from subprocess import Popen, PIPE
 
-from tor_control_panel import tor_bootstrap, info
+from tor_control_panel import tor_bootstrap, info, privilege
 
 class RestartTor(QWidget):
     def __init__(self):
@@ -27,7 +27,9 @@ class RestartTor(QWidget):
         self.setupUI()
 
     def setupUI(self):
-        self.setGeometry(300, 150, 450, 150)
+        ## Size only; the window is positioned by center() once shown, so a
+        ## hardcoded x/y here would just be overridden.
+        self.resize(450, 150)
         self.setWindowTitle('Restart Tor')
 
         self.text.setWordWrap(True)
@@ -78,7 +80,8 @@ class RestartTor(QWidget):
         Use subprocess.Popen instead of subprocess.call in order to catch
         possible errors from "restart tor" command.
         '''
-        command = Popen(['leaprun', 'acw-tor-control-restart'], stdout=PIPE, stderr=PIPE)
+        argv = privilege.command('acw-tor-control-restart')
+        command = Popen(argv, stdout=PIPE, stderr=PIPE)
         stdout, stderr = command.communicate()
 
         std_err = stderr.decode()
@@ -89,7 +92,7 @@ class RestartTor(QWidget):
             box.setIcon(QMessageBox.Critical)
             box.setWindowTitle("restart-tor - Error")
             text = (
-                "Command 'leaprun acw-tor-control-restart' failed.\n\n"
+                "Command '" + ' '.join(argv) + "' failed.\n\n"
                 "stderr: " + std_err
             )
             print("ERROR: " + text)

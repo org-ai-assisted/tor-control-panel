@@ -77,7 +77,7 @@ class TorControlPanel(QDialog):
 
         self.log_source_names = ['systemd &journal', 'Tor &log', '&torrc']
 
-        self.journal_command = 'leaprun', 'tor-control-panel-read-tor-default-log'
+        self.journal_command = privilege.command('tor-control-panel-read-tor-default-log')
 
         self.bridges = ['None',
                         'obfs4',
@@ -866,8 +866,7 @@ class TorControlPanel(QDialog):
         self.stop_tor()
         self.restart_button.setEnabled(False)
 
-        restart_command = 'leaprun acw-tor-control-restart'
-        p = Popen(restart_command, shell=True)
+        p = Popen(privilege.command('acw-tor-control-restart'))
         self.start_bootstrap()
 
     def stop_tor(self):
@@ -875,8 +874,7 @@ class TorControlPanel(QDialog):
         if not self.bootstrap_done:
             self.bootstrap_progress.hide()
             self.stop_bootstrap_thread()
-        stop_command = 'leaprun acw-tor-control-stop'
-        p = Popen(stop_command, shell=True)
+        p = Popen(privilege.command('acw-tor-control-stop'))
         p.wait()
         self.refresh(True)
 

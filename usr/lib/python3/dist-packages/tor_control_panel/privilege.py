@@ -32,11 +32,18 @@ def _prefix():
     return ['pkexec']
 
 
+def command(action, *args):
+    """Full argv (runner prefix + action + args) for callers that need their
+    own Popen/run -- e.g. to capture stdout/stderr. Use run()/check_run()
+    instead when only the exit code matters."""
+    return _prefix() + [action, *args]
+
+
 def run(action, *args):
     """Run privileged `action` (with optional args) and return its exit code."""
-    return subprocess.call(_prefix() + [action, *args])
+    return subprocess.call(command(action, *args))
 
 
 def check_run(action, *args):
     """Like run(), but raise CalledProcessError on a non-zero exit."""
-    subprocess.check_call(_prefix() + [action, *args])
+    subprocess.check_call(command(action, *args))
