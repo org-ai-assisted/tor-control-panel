@@ -75,7 +75,7 @@ class TorControlPanel(QDialog):
         self.tor_running_path = '/run/tor/tor.pid'
         self.torrc_file_path = torrc_gen.torrc_path()
 
-        self.button_name = ['systemd &journal', 'Tor &log', '&torrc']
+        self.log_source_names = ['systemd &journal', 'Tor &log', '&torrc']
 
         self.journal_command = 'leaprun', 'tor-control-panel-read-tor-default-log'
 
@@ -171,7 +171,7 @@ class TorControlPanel(QDialog):
             self.proxy_combo.addItem(proxy)
         self.proxy_combo.insertSeparator(1)
         self.proxy_combo.currentIndexChanged.connect(
-            lambda: self.proxy_settings_show(self.proxy_combo.currentText()))
+            lambda: self.update_proxy_settings(self.proxy_combo.currentText()))
 
         self.proxy_info_button = QPushButton(self.info_icon, '')
         self.proxy_info_button.clicked.connect(info.show_proxy_help)
@@ -557,7 +557,7 @@ class TorControlPanel(QDialog):
         return (validators.valid_ip(self.proxy_ip_edit.text()) and
                 validators.valid_port(self.proxy_port_edit.text()))
 
-    def proxy_settings_show(self, proxy):
+    def update_proxy_settings(self, proxy):
         if proxy == 'None':
             self.proxy_ip_label.hide()
             self.proxy_ip_edit.hide()
@@ -593,7 +593,7 @@ class TorControlPanel(QDialog):
             self.proxy_port_edit.setEnabled(True)
             self.proxy_user_edit.setEnabled(True)
             self.proxy_pwd_edit.setEnabled(True)
-            self.proxy_settings_show(self.proxy_combo.currentText())
+            self.update_proxy_settings(self.proxy_combo.currentText())
             self.bridge_info_button.show()
             self.proxy_info_button.show()
             self.prev_button.show()
@@ -605,7 +605,7 @@ class TorControlPanel(QDialog):
             proxy = self.proxy_type.text()
             index = self.proxy_combo.findText(proxy, QtCore.Qt.MatchFixedString)
             self.proxy_combo.setCurrentIndex(index)
-            self.proxy_settings_show(proxy)
+            self.update_proxy_settings(proxy)
 
         elif 'Accept' in self.configure_button.text():
             bridge = self.bridges_combo.currentText()
@@ -707,7 +707,7 @@ class TorControlPanel(QDialog):
         self.proxy_combo.hide()
         self.bridge_info_button.hide()
         self.proxy_info_button.hide()
-        self.proxy_settings_show(self.proxy_type.text())
+        self.update_proxy_settings(self.proxy_type.text())
         self.proxy_ip_edit.setEnabled(False)
         self.proxy_port_edit.setEnabled(False)
         self.proxy_user_edit.setEnabled(False)
@@ -723,7 +723,7 @@ class TorControlPanel(QDialog):
     def refresh_logs(self):
         for button in self.files_box.findChildren(QRadioButton):
             if button.isChecked():
-                if button.text() == self.button_name[0]:
+                if button.text() == self.log_source_names[0]:
                     p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
                     stdout, stderr = p.communicate()
                     ## Journal content is untrusted; decode defensively (a
@@ -733,7 +733,7 @@ class TorControlPanel(QDialog):
 
                 # Get n last lines from Tor log, HTML format for highlighting
                 # warnings and errors, write to file for text browser.
-                elif button.text() == self.button_name[1]:
+                elif button.text() == self.log_source_names[1]:
                     if os.path.exists(self.tor_log):
                         lines = os.popen('tail -n 3000 %s' % self.tor_log).read()
                         lines = lines.split('\n')
@@ -766,7 +766,7 @@ class TorControlPanel(QDialog):
                     else:
                         text = 'Something is wrong: directory /run/tor does not exists. Try to restart Tor.'
 
-                elif button.text() == self.button_name[2]:
+                elif button.text() == self.log_source_names[2]:
                     with open(torrc_gen.torrc_path()) as f:
                         ## torrc may contain user-supplied content; sanitize.
                         text = sanitize_string(f.read())
