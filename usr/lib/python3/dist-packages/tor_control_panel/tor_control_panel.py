@@ -15,7 +15,6 @@ from subprocess import call, Popen, PIPE
 
 import os
 import glob
-import tempfile
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
@@ -75,8 +74,6 @@ class TorControlPanel(QDialog):
         self.tor_running_path = '/run/tor/tor.pid'
         self.torrc_file_path = torrc_gen.torrc_path()
 
-        self.log_source_names = ['systemd &journal', 'Tor &log', '&torrc']
-
         self.journal_command = privilege.command('tor-control-panel-read-tor-default-log')
 
         self.bridges = ['None',
@@ -100,9 +97,6 @@ class TorControlPanel(QDialog):
         self.use_proxy = False
 
         self.tor_log = '/run/tor/log'
-
-        self.tor_log_tempfile = tempfile.NamedTemporaryFile()
-        self.tor_log_html = self.tor_log_tempfile.name
 
         # tor log HTML style
         self.warn_style = '<span style="background-color:yellow">{}' \
@@ -734,60 +728,66 @@ class TorControlPanel(QDialog):
 
     def refresh_logs(self):
         for button in self.files_box.findChildren(QRadioButton):
-            if button.isChecked():
-                if button.text() == self.log_source_names[0]:
-                    p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
-                    stdout, stderr = p.communicate()
-                    ## Journal content is untrusted; decode defensively (a
-                    ## malformed byte must not crash the log view) then strip
-                    ## control characters, escape sequences and markup.
-                    text = sanitize_string(stdout.decode(errors='replace'))
+            if not button.isChecked():
+                continue
 
-                # Get n last lines from Tor log, HTML format for highlighting
-                # warnings and errors, write to file for text browser.
-                elif button.text() == self.log_source_names[1]:
-                    if os.path.exists(self.tor_log):
-                        ## Last 3000 lines of the Tor log, read directly rather
-                        ## than shelling out to 'tail'.
-                        with open(self.tor_log, 'r', encoding="utf-8",
-                                  errors='replace') as flog:
-                            lines = flog.read().split('\n')[-3000:]
-                        with open(self.tor_log_html, 'w') as fw:
-                            for line in lines:
-                                ## Tor log lines are untrusted and are embedded
-                                ## into HTML below; strip control characters,
-                                ## escape sequences and markup first so they
-                                ## cannot inject into the log view.
-                                line = sanitize_string(line)
-                                line = line + '\n'
-                                ## Redact the fixed column range; using the slice
-                                ## as a regex pattern crashes on metacharacters
-                                ## and, when empty, inserts '...' between chars.
-                                ## Guard short lines (e.g. blank tail output) so
-                                ## they are not suffixed with a spurious '...'.
-                                if len(line) > 19:
-                                    line = line[:12] + '...' + line[19:]
-                                line = line.replace('[warn]', self.warn_style)
-                                line = line.replace('[error]', self.error_style)
-                                if '[warn]' in line or '[error]' in line:
-                                    line = line.replace('\n', '</span><br>')
-                                else:
-                                    line = line.replace('\n', '<br>')
-                                fw.write(line)
+            ## Dispatch on the button identity, not its label text, so a wording
+            ## change to a radio cannot silently break log selection.
+            if button is self.journal_button:
+                p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
+                stdout, stderr = p.communicate()
+                ## Journal content is untrusted; decode defensively (a
+                ## malformed byte must not crash the log view) then strip
+                ## control characters, escape sequences and markup.
+                text = sanitize_string(stdout.decode(errors='replace'))
 
-                        with open(self.tor_log_html, 'r') as f:
-                            text = f.read()
+            # Last n lines of the Tor log, HTML-formatted to highlight warnings
+            # and errors.
+            elif button is self.log_button:
+                if os.path.exists(self.tor_log):
+                    ## Last 3000 lines of the Tor log, read directly rather
+                    ## than shelling out to 'tail'.
+                    with open(self.tor_log, 'r', encoding="utf-8",
+                              errors='replace') as flog:
+                        lines = flog.read().split('\n')[-3000:]
+                    html_lines = []
+                    for line in lines:
+                        ## Tor log lines are untrusted and are embedded into
+                        ## HTML below; strip control characters, escape
+                        ## sequences and markup first so they cannot inject
+                        ## into the log view.
+                        line = sanitize_string(line) + '\n'
+                        ## Redact the fixed column range; using the slice as a
+                        ## regex pattern crashes on metacharacters and, when
+                        ## empty, inserts '...' between chars. Guard short lines
+                        ## (e.g. blank tail output) so they are not suffixed
+                        ## with a spurious '...'.
+                        if len(line) > 19:
+                            line = line[:12] + '...' + line[19:]
+                        line = line.replace('[warn]', self.warn_style)
+                        line = line.replace('[error]', self.error_style)
+                        if '[warn]' in line or '[error]' in line:
+                            line = line.replace('\n', '</span><br>')
+                        else:
+                            line = line.replace('\n', '<br>')
+                        html_lines.append(line)
+                    text = ''.join(html_lines)
+                else:
+                    text = 'Something is wrong: directory /run/tor does not exists. Try to restart Tor.'
 
-                    else:
-                        text = 'Something is wrong: directory /run/tor does not exists. Try to restart Tor.'
-
-                elif button.text() == self.log_source_names[2]:
-                    with open(torrc_gen.torrc_path()) as f:
+            elif button is self.torrc_button:
+                torrc_path = torrc_gen.torrc_path()
+                ## On plain Debian / Kicksecure the drop-in may not exist yet;
+                ## show a note instead of crashing with FileNotFoundError.
+                if os.path.exists(torrc_path):
+                    with open(torrc_path, encoding="utf-8") as f:
                         ## torrc may contain user-supplied content; sanitize.
                         text = sanitize_string(f.read())
+                else:
+                    text = 'No tor-control-panel torrc exists yet.'
 
-                self.file_browser.setText(text)
-                self.file_browser.moveCursor(QtGui.QTextCursor.End)
+            self.file_browser.setText(text)
+            self.file_browser.moveCursor(QtGui.QTextCursor.End)
 
     def refresh_user_configuration(self):
         args = torrc_gen.parse_torrc()
