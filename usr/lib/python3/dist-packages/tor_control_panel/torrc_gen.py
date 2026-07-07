@@ -4,27 +4,16 @@
 ## See the file COPYING for copying conditions.
 
 import json
-import os
 from pathlib import Path
 
 from . import info
 from .edit_etc_resolv_conf import edit_etc_resolv_conf_add
-from .tor_status import write_to_temp_then_move
-
-whonix = os.path.exists('/usr/share/anon-gw-base-files/gateway')
-
-## Where the tor-control-panel torrc drop-in lives. On Whonix / Qubes-Whonix
-## the drop-in dir is /usr/local/etc/torrc.d (used on the Gateway); on plain
-## Debian / Kicksecure, Tor's own /etc/tor/torrc.d is used (adrelanos, forum
-## post #154: torrc.d is the sustainable target, and the GUI -- unlike the
-## package -- may write Tor's config directly).
-if whonix:
-    torrc_dir = '/usr/local/etc/torrc.d'
-else:
-    torrc_dir = '/etc/tor/torrc.d'
-
-torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
-torrc_user_file_path = torrc_dir + '/50_user.conf'
+## The distro-aware drop-in path is defined once, in tor_status; import it here
+## rather than recomputing it, so the two modules can never disagree on where
+## the torrc lives (forum post #154: torrc.d is the sustainable target, and the
+## GUI -- unlike the package -- may write Tor's config directly).
+from .tor_status import (write_to_temp_then_move, whonix, torrc_dir,
+                         torrc_file_path, torrc_user_file_path)
 
 bridges_default_path = '/usr/share/anon-connection-wizard/bridges_default'
 

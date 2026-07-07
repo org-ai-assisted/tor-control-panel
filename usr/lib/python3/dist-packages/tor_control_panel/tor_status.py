@@ -12,12 +12,15 @@ if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
 else:
     whonix = False
 
-## Distro-aware drop-in location, matching torrc_gen: /usr/local/etc/torrc.d on
-## Whonix, Tor's own /etc/tor/torrc.d on plain Debian / Kicksecure.
+## Distro-aware drop-in location (the single definition; torrc_gen imports
+## these): /usr/local/etc/torrc.d on Whonix, Tor's own /etc/tor/torrc.d on
+## plain Debian / Kicksecure (Debian bug #866187).
 if whonix:
-    torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+    torrc_dir = '/usr/local/etc/torrc.d'
 else:
-    torrc_file_path = '/etc/tor/torrc.d/40_tor_control_panel.conf'
+    torrc_dir = '/etc/tor/torrc.d'
+torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
+torrc_user_file_path = torrc_dir + '/50_user.conf'
 acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
 
@@ -132,7 +135,7 @@ def cat(filename):
     if not os.path.exists(filename):
         print(f"File did not exist: '{filename}'")
         return
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding="utf-8") as file:
         content = file.read()
         if not content:
             print(f"File is empty: '{filename}'")
