@@ -399,14 +399,20 @@ class TorControlPanel(QDialog):
         self.control_box.setTitle('Control')
         self.restart_button.setIconSize(QtCore.QSize(28, 28))
         self.restart_button.setFlat(True)
-        self.restart_button.setGeometry(QtCore.QRect(10, 28, 113, 32))
         self.stop_button.setIconSize(QtCore.QSize(28, 28))
         self.stop_button.setFlat(True)
-        self.stop_button.setGeometry(QtCore.QRect(10, 70, 96, 32))
         self.configure_button.setIconSize(QtCore.QSize(28, 28))
         self.configure_button.setFlat(True)
-        self.configure_button.setGeometry(QtCore.QRect(10, 110, 102, 32))
         self.configure_button.setDefault(True)
+
+        ## Stack the Control buttons in a layout instead of absolute
+        ## setGeometry, so the group box sizes itself and the buttons stay put
+        ## when fonts / DPI differ.
+        self.control_box_layout = QVBoxLayout(self.control_box)
+        self.control_box_layout.setAlignment(Qt.AlignTop)
+        self.control_box_layout.addWidget(self.restart_button)
+        self.control_box_layout.addWidget(self.stop_button)
+        self.control_box_layout.addWidget(self.configure_button)
 
         self.custom_bridges_frame.hide()
         self.custom_cancel_button.setFlat(True)
