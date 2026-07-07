@@ -23,14 +23,21 @@ def tor_status():
     # output = output.decode("UTF-8").strip()
 
     def tor_enabled_check():
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r') as f:
-            content = f.readlines()
-            for line in content:
-                if "DisableNetwork 1" in line:
-                    return False
-                elif "DisableNetwork 0" in line:
-                    return True
+        ## Match the DisableNetwork directive itself (first token on a
+        ## non-comment line), not any substring -- a commented-out or partial
+        ## occurrence must not be mistaken for the active setting.
+        with open(torrc_file_path, 'r', encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue
+                parts = stripped.split()
+                if len(parts) >= 2 and parts[0] == 'DisableNetwork':
+                    if parts[1] == '1':
+                        return False
+                    if parts[1] == '0':
+                        return True
+        return None
 
     if tor_enabled_check():
         print("tor_status status: tor_enabled")

@@ -10,14 +10,27 @@ import os
 import re
 import time
 
+from sanitize_string.sanitize_string_lib import sanitize_string
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication
+
+## Holds a strong reference to every TorBootstrap thread while it is running so
+## Python cannot garbage-collect a QThread that is still executing (which
+## crashes with "QThread: Destroyed while thread is still running"). Each thread
+## removes itself when it finishes. Callers keep their own bootstrap_thread
+## reference to the currently active thread separately.
+_active_bootstrap_threads = set()
 
 class TorBootstrap(QThread):
     signal = pyqtSignal(str, int)
 
     def __init__(self, main):
         super(TorBootstrap, self).__init__(main)
+
+        _active_bootstrap_threads.add(self)
+        self.finished.connect(
+            lambda: _active_bootstrap_threads.discard(self))
 
         self.control_cookie_path = '/run/tor/control.authcookie'
         self.control_socket_path = '/run/tor/control'
@@ -164,7 +177,9 @@ class TorBootstrap(QThread):
                     bootstrap_phase = "Unknown Bootstrap TAG. This is harmless. Please run this program from command line to view console output and report this."
                     sys.stdout.write('Unknown Bootstrap TAG. Full message is shown in the very next line:\n')
                     sys.stdout.flush()
-                sys.stdout.write('{0}\n'.format(bootstrap_status))
+                ## bootstrap_status is untrusted Tor output; sanitize before
+                ## writing it to the terminal.
+                sys.stdout.write('{0}\n'.format(sanitize_string(bootstrap_status)))
                 sys.stdout.flush()
                 self.previous_status = bootstrap_status
                 self.signal.emit(bootstrap_phase, bootstrap_percent)

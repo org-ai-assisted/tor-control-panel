@@ -17,6 +17,8 @@ import os
 import glob
 import tempfile
 
+from sanitize_string.sanitize_string_lib import sanitize_string
+
 from . import tor_status, tor_bootstrap, torrc_gen, info
 
 
@@ -702,7 +704,9 @@ class TorControlPanel(QDialog):
                 if button.text() == self.button_name[0]:
                     p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
                     stdout, stderr = p.communicate()
-                    text = stdout.decode()
+                    ## Journal content is untrusted; strip control characters,
+                    ## escape sequences and markup before display.
+                    text = sanitize_string(stdout.decode())
 
                 # Get n last lines from Tor log, HTML format for highlighting
                 # warnings and errors, write to file for text browser.
@@ -712,6 +716,11 @@ class TorControlPanel(QDialog):
                         lines = lines.split('\n')
                         with open(self.tor_log_html, 'w') as fw:
                             for line in lines:
+                                ## Tor log lines are untrusted and are embedded
+                                ## into HTML below; strip control characters,
+                                ## escape sequences and markup first so they
+                                ## cannot inject into the log view.
+                                line = sanitize_string(line)
                                 line = line + '\n'
                                 ## Redact the fixed column range; using the slice
                                 ## as a regex pattern crashes on metacharacters
@@ -736,7 +745,8 @@ class TorControlPanel(QDialog):
 
                 elif button.text() == self.button_name[2]:
                     with open(torrc_gen.torrc_path()) as f:
-                        text = f.read()
+                        ## torrc may contain user-supplied content; sanitize.
+                        text = sanitize_string(f.read())
 
                 self.file_browser.setText(text)
                 self.file_browser.moveCursor(QtGui.QTextCursor.End)
