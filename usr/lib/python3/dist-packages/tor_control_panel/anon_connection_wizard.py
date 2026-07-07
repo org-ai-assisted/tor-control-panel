@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QCursor, QTextCursor
 from guimessages.translations import _translations
 
-from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info
+from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info, validators
 from .tor_status import cat, write_to_temp_then_move
 
 
@@ -479,27 +479,9 @@ class ProxyWizardPage(QWizardPage):
             Common.proxy_type = 'None'
             Common.use_proxy = False
 
-    def valid_ip(self, address):
-        import socket
-        try:
-            ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
-            socket.getaddrinfo(address, None)
-            return True
-        except OSError:
-            return False
-
-    def valid_port(self, port):
-        try:
-            if 1 <= int(port) <= 65535:
-                return True
-            else:
-                return False
-        except (ValueError, TypeError):
-            return False
-
     def check_valid_proxy_settings(self):
-        return (self.valid_ip(self.ip_edit.text()) and
-                     self.valid_port(self.port_edit.text()))
+        return (validators.valid_ip(self.ip_edit.text()) and
+                validators.valid_port(self.port_edit.text()))
 
     def nextId(self):
         if not Common.use_proxy:

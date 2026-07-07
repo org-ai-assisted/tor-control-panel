@@ -19,7 +19,7 @@ import tempfile
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
-from . import tor_status, tor_bootstrap, torrc_gen, info
+from . import tor_status, tor_bootstrap, torrc_gen, info, validators
 
 
 class TorControlPanel(QDialog):
@@ -515,27 +515,9 @@ class TorControlPanel(QDialog):
             self.hide_custom_bridges()
             self.set_torrc()
 
-    def valid_ip(self, address):
-        import socket
-        try:
-            ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
-            socket.getaddrinfo(address, None)
-            return True
-        except socket.error:
-            return False
-
-    def valid_port(self, port):
-        try:
-            if 1 <= int(port) <= 65535:
-                return True
-            else:
-                return False
-        except (ValueError, TypeError):
-            return False
-
     def check_valid_proxy_settings(self):
-        return (self.valid_ip(self.proxy_ip_edit.text()) and
-                self.valid_port(self.proxy_port_edit.text()))
+        return (validators.valid_ip(self.proxy_ip_edit.text()) and
+                validators.valid_port(self.proxy_port_edit.text()))
 
     def proxy_settings_show(self, proxy):
         if proxy == 'None':
