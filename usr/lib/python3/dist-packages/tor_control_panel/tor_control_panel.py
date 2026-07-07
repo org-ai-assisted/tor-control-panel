@@ -153,7 +153,7 @@ class TorControlPanel(QDialog):
         self.user_layout = QHBoxLayout(self.user_frame)
         self.config_group_box = QGroupBox()
 
-        self.bridges_label = QLabel()
+        self.bridges_heading_label = QLabel()
         self.bridge_type = QLabel()
         self.bridges_combo = QComboBox()
         for bridge in self.bridges:
@@ -164,7 +164,7 @@ class TorControlPanel(QDialog):
         self.bridge_info_button = QPushButton(self.info_icon, '')
         self.bridge_info_button.clicked.connect(info.show_help_censorship)
 
-        self.proxy_label = QLabel()
+        self.proxy_heading_label = QLabel()
         self.proxy_type = QLabel()
         self.proxy_combo = QComboBox()
         for proxy in self.proxies:
@@ -177,11 +177,11 @@ class TorControlPanel(QDialog):
         self.proxy_info_button.clicked.connect(info.show_proxy_help)
 
         self.config_grid_layout = QGridLayout()
-        self.config_grid_layout.addWidget(self.bridges_label, 0, 0)
+        self.config_grid_layout.addWidget(self.bridges_heading_label, 0, 0)
         self.config_grid_layout.addWidget(self.bridge_type, 0, 1)
         self.config_grid_layout.addWidget(self.bridges_combo, 0, 1)
         self.config_grid_layout.addWidget(self.bridge_info_button, 0, 2)
-        self.config_grid_layout.addWidget(self.proxy_label, 1, 0)
+        self.config_grid_layout.addWidget(self.proxy_heading_label, 1, 0)
         self.config_grid_layout.addWidget(self.proxy_type, 1, 1)
         self.config_grid_layout.addWidget(self.proxy_combo, 1, 1)
         self.config_grid_layout.addWidget(self.proxy_info_button, 1, 2)
@@ -352,8 +352,8 @@ class TorControlPanel(QDialog):
 
         self.config_group_box.setTitle('User configuration')
 
-        self.bridges_label.setMaximumWidth(90)
-        self.bridges_label.setText('Bridges type :')
+        self.bridges_heading_label.setMaximumWidth(90)
+        self.bridges_heading_label.setText('Bridges type :')
         self.bridge_type.setStyleSheet('font:bold')
         self.bridge_type.setMinimumHeight(24)
         self.bridges_combo.hide()
@@ -362,8 +362,8 @@ class TorControlPanel(QDialog):
         self.bridge_info_button.hide()
         self.bridge_info_button.setToolTip('Show bridges help')
 
-        self.proxy_label.setText('Proxy type :')
-        self.proxy_label.setMaximumWidth(90)
+        self.proxy_heading_label.setText('Proxy type :')
+        self.proxy_heading_label.setMaximumWidth(90)
         self.proxy_type.setStyleSheet('font:bold')
         self.proxy_type.setMinimumHeight(24)
         self.proxy_combo.hide()
