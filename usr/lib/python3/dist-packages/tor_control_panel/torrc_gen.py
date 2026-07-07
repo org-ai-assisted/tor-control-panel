@@ -147,9 +147,10 @@ def parse_torrc():
             if line.startswith('Bridge'):
                 line = line.split()
                 # The bridge name is 'meek_lite', the bridge type is 'meek'
-                if line[1].startswith('meek_lite'):
-                    line[1] = 'meek'
-                bridge_type = line[1]
+                if len(line) >= 2:
+                    if line[1].startswith('meek_lite'):
+                        line[1] = 'meek'
+                    bridge_type = line[1]
 
             if use_custom_bridges:
                 bridge_type = 'Custom bridges'

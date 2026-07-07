@@ -485,6 +485,9 @@ class TorControlPanel(QDialog):
         ## thread, which would otherwise raise AttributeError.
         if getattr(self, 'bootstrap_thread', None):
             self.bootstrap_thread.terminate()
+            ## terminate() is asynchronous; wait so callers (restart / quit) do
+            ## not proceed while the old QThread is still shutting down.
+            self.bootstrap_thread.wait()
 
     def start_bootstrap(self):
         self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
@@ -660,14 +663,10 @@ class TorControlPanel(QDialog):
             args.append(self.proxy_combo.currentText())
             args.append(self.proxy_ip_edit.text())
             args.append(self.proxy_port_edit.text())
-            if not self.proxy_user_edit.text() == 'None':
-                args.append(self.proxy_user_edit.text())
-            else:
-                args.append('')
-            if not self.proxy_pwd_edit.text() == 'None':
-                args.append(self.proxy_pwd_edit.text())
-            else:
-                args.append('')
+            ## Always strings from the proxy fields; append unconditionally so
+            ## gen_torrc() receives the 7 arguments it needs to emit the proxy.
+            args.append(self.proxy_user_edit.text())
+            args.append(self.proxy_pwd_edit.text())
         else:
             args.append('None')
 
@@ -704,9 +703,10 @@ class TorControlPanel(QDialog):
                 if button.text() == self.button_name[0]:
                     p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
                     stdout, stderr = p.communicate()
-                    ## Journal content is untrusted; strip control characters,
-                    ## escape sequences and markup before display.
-                    text = sanitize_string(stdout.decode())
+                    ## Journal content is untrusted; decode defensively (a
+                    ## malformed byte must not crash the log view) then strip
+                    ## control characters, escape sequences and markup.
+                    text = sanitize_string(stdout.decode(errors='replace'))
 
                 # Get n last lines from Tor log, HTML format for highlighting
                 # warnings and errors, write to file for text browser.
@@ -758,11 +758,12 @@ class TorControlPanel(QDialog):
         index = self.bridges_combo.findText(args[0])
         self.bridges_combo.setCurrentIndex(index)
 
-        if self.bridge_type.text() in self.default_bridges:
-            self.use_default_bridges = True
-
-        elif self.bridge_type.text() == 'Custom bridges':
-            self.use_custom_bridges = True
+        ## Assign both flags on every refresh so a previous default/custom
+        ## selection cannot leak into a later set_torrc() and emit conflicting
+        ## bridge configuration.
+        bridge_type = self.bridge_type.text()
+        self.use_default_bridges = bridge_type in self.default_bridges
+        self.use_custom_bridges = bridge_type == 'Custom bridges'
 
         self.proxy_type.setText(args[1])
         if not self.proxy_type.text() == 'None':
