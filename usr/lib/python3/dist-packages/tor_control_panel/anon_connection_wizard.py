@@ -178,7 +178,7 @@ class BridgeWizardPage(QWizardPage):
         self.title_frame = QFrame()
         self.title_layout = QGridLayout(self.title_frame)
         self.title_label = QLabel()
-        self.title_layout.addWidget(self.title_label, 1, 0, Qt.AlignmentFlag.AlignCenter)
+        self.title_layout.addWidget(self.title_label, 0, 0, Qt.AlignmentFlag.AlignCenter)
         self.title_frame.setMaximumHeight(100)
 
         self.header_frame = QFrame()
@@ -187,8 +187,8 @@ class BridgeWizardPage(QWizardPage):
         self.bridges_checkbox = QCheckBox()
         self.bridges_checkbox.setMaximumHeight(20)
         self.show_help_censorship = QPushButton()
-        self.header_layout.addWidget(self.bridges_checkbox, 1, 0, Qt.AlignmentFlag.AlignLeft)
-        self.header_layout.addWidget(self.show_help_censorship, 1, 1 ,Qt.AlignmentFlag.AlignRight)
+        self.header_layout.addWidget(self.bridges_checkbox, 0, 0, Qt.AlignmentFlag.AlignLeft)
+        self.header_layout.addWidget(self.show_help_censorship, 0, 1, Qt.AlignmentFlag.AlignRight)
 
         self.bridges_frame = QFrame()
         self.bridges_layout = QHBoxLayout(self.bridges_frame)
@@ -211,15 +211,15 @@ class BridgeWizardPage(QWizardPage):
         self.custom_bridges.setMinimumSize(440, 480)
 
         self.custom_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.custom_layout.addWidget(self.custom_label, 1, 0)
+        self.custom_layout.addWidget(self.custom_label, 0, 0)
 
         self.custom_bridges_help.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.custom_layout.addWidget(self.custom_bridges_help, 1, 1, Qt.AlignmentFlag.AlignRight)
+        self.custom_layout.addWidget(self.custom_bridges_help, 0, 1, Qt.AlignmentFlag.AlignRight)
 
         self.custom_layout.addItem(self.h_spacer, 2, 0)
 
         self.custom_bridges.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.custom_layout.addWidget(self.custom_bridges, 3, 0)
+        self.custom_layout.addWidget(self.custom_bridges, 1, 0)
 
         self.dummy_frame = QFrame()
         ## Absorb spare vertical space so the frames above stay top-aligned.
@@ -355,8 +355,8 @@ class ProxyWizardPage(QWizardPage):
         self.header_layout = QGridLayout(self.header_frame)
         self.title_label = QLabel()
         self.proxy_checkbox = QCheckBox()
-        self.header_layout.addWidget(self.title_label, 1, 0)
-        self.header_layout.addWidget(self.proxy_checkbox, 2, 0)
+        self.header_layout.addWidget(self.title_label, 0, 0)
+        self.header_layout.addWidget(self.proxy_checkbox, 1, 0)
 
         self.proxy_frame = QFrame()
         self.proxy_layout = QGridLayout(self.proxy_frame)
@@ -376,8 +376,8 @@ class ProxyWizardPage(QWizardPage):
         self.password_edit = QLineEdit()
 
         self.proxy_help_layout = QGridLayout()
-        self.proxy_help_layout.addWidget(self.proxy_settings_label, 1, 0)
-        self.proxy_help_layout.addWidget(self.proxy_help, 1, 3)
+        self.proxy_help_layout.addWidget(self.proxy_settings_label, 0, 0)
+        self.proxy_help_layout.addWidget(self.proxy_help, 0, 3)
         self.proxy_layout.addLayout(self.proxy_help_layout, 1, 0)
 
         self.proxy_type_layout = QHBoxLayout()
@@ -387,17 +387,17 @@ class ProxyWizardPage(QWizardPage):
         self.proxy_layout.addLayout(self.proxy_type_layout, 2, 0)
 
         self.proxy_args_layout = QGridLayout()
-        self.proxy_args_layout.addWidget(self.ip_label, 1, 0)
-        self.proxy_args_layout.addWidget(self.ip_edit, 1, 1)
-        self.proxy_args_layout.addWidget(self.port_label, 1, 2)
-        self.proxy_args_layout.addWidget(self.port_edit, 1, 3)
+        self.proxy_args_layout.addWidget(self.ip_label, 0, 0)
+        self.proxy_args_layout.addWidget(self.ip_edit, 0, 1)
+        self.proxy_args_layout.addWidget(self.port_label, 0, 2)
+        self.proxy_args_layout.addWidget(self.port_edit, 0, 3)
         self.proxy_layout.addLayout(self.proxy_args_layout, 3, 0)
 
         self.user_layout = QGridLayout()
-        self.user_layout.addWidget(self.user_label, 1, 0)
-        self.user_layout.addWidget(self.user_edit, 1, 1)
-        self.user_layout.addWidget(self.password_label, 1, 2)
-        self.user_layout.addWidget(self.password_edit, 1, 3)
+        self.user_layout.addWidget(self.user_label, 0, 0)
+        self.user_layout.addWidget(self.user_edit, 0, 1)
+        self.user_layout.addWidget(self.password_label, 0, 2)
+        self.user_layout.addWidget(self.password_edit, 0, 3)
         self.proxy_layout.addLayout(self.user_layout, 4, 0)
 
         self.layout = QVBoxLayout()
@@ -593,8 +593,8 @@ class TorStatusPage(QWizardPage):
         self.bootstrap_progress = QProgressBar(self)
 
         self.layout = QGridLayout()
-        self.layout.addWidget(self.text, 0, 1, 1, 2)
-        self.layout.addWidget(self.bootstrap_progress, 1, 1, 1, 1)
+        self.layout.addWidget(self.text, 0, 0, 1, 2)
+        self.layout.addWidget(self.bootstrap_progress, 1, 0, 1, 1)
         self.setLayout(self.layout)
 
         self.setup_ui()
