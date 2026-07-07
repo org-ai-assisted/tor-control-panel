@@ -224,6 +224,11 @@ class BridgesWizardPage(QWizardPage):
         self.custom_layout.addWidget(self.custom_bridges, 3, 0)
 
         self.dummy_frame = QFrame()
+        ## Absorb spare vertical space so the frames above stay top-aligned.
+        ## Without this, hiding the bridges/custom frames (e.g. after unchecking
+        ## "I need bridges...") lets the layout re-distribute the freed space and
+        ## the checkbox drifts toward the middle of the window.
+        self.dummy_frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.title_frame)

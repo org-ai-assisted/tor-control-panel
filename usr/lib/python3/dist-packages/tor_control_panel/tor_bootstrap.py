@@ -40,18 +40,24 @@ class TorBootstrap(QThread):
         https://gitweb.torproject.org/tor-launcher.git/tree/src/chrome/locale/en/torlauncher.properties
         '''
         self.tag_phase = {'starting': 'Starting',
+                    'conn_pt': 'Connecting to a pluggable transport',
+                    'conn_done_pt': "Connected to pluggable transport",
+                    'conn_proxy': 'Connecting to the proxy',
+                    'conn_done_proxy': 'Connected to the proxy',
                     'conn': 'Connecting to a relay',
                     'conn_dir': 'Connecting to a relay directory',
-                    'conn_done_pt': "Connected to pluggable transport",
                     'handshake_dir': 'Finishing handshake with directory server',
                     'onehop_create': 'Establishing an encrypted directory connection',
                     'requesting_status': 'Retrieving network status',
                     'loading_status': 'Loading network status',
                     'loading_keys': 'Loading authority certificates',
                     'enough_dirinfo': 'Loaded enough directory info to build circuits',
+                    'ap_conn_pt': 'Connecting to a pluggable transport to build circuits',
+                    'ap_conn_done_pt': 'Connected to pluggable transport to build circuits',
+                    'ap_conn_proxy': 'Connecting to the proxy to build circuits',
+                    'ap_conn_done_proxy': 'Connected to the proxy to build circuits',
                     'ap_conn': 'Connecting to a relay to build circuits',
                     'ap_conn_done': 'Connected to a relay to build circuits',
-                    'ap_conn_done_pt': 'Connected to pluggable transport to build circuits',
                     'ap_handshake': 'Finishing handshake with a relay to build circuits',
                     'ap_handshake_done': 'Handshake finished with a relay to build circuits',
                     'requesting_descriptors': 'Requesting relay information',
@@ -59,6 +65,7 @@ class TorBootstrap(QThread):
                     'conn_or': 'Connecting to the Tor network',
                     'conn_done': "Connected to a relay",
                     'handshake': "Handshaking with a relay",
+                    'handshake_done': 'Handshake finished with a relay',
                     'handshake_or': 'Finishing handshake with first hop',
                     'circuit_create': 'Establishing a Tor circuit',
                     'done': 'Connected to the Tor network!'}
@@ -142,13 +149,18 @@ class TorBootstrap(QThread):
         if self.tor_controller == None:
             sys.stdout.write('Controller connection failed.\n')
             sys.stdout.flush()
-            sys.exit(1)
+            ## Return (end this QThread's run) rather than sys.exit(): an
+            ## unhandled SystemExit raised inside a QThread can abort the whole
+            ## application (the "window vanished" symptom), e.g. when Enable
+            ## network briefly restarts Tor and the controller is momentarily
+            ## unavailable.
+            return
 
         if self.tor_controller.get_conf('DisableNetwork') == '1':
             self.tor_controller.set_conf('DisableNetwork', '0')
             sys.stdout.write('Toggle DisableNetwork value to 0. Tor is now allowed to connect to the network.\n')
             sys.stdout.flush()
-            sys.exit(1)
+            return
 
         bootstrap_percent = 0
         while bootstrap_percent < 100:
@@ -172,10 +184,16 @@ class TorBootstrap(QThread):
                 if bootstrap_tag in self.tag_phase:
                     bootstrap_phase = self.tag_phase[bootstrap_tag]
                 else:
-                    '''Use a static message to cover unknown bootstrap tag to avoid potential
-                    misleading/harmful info shown.'''
-                    bootstrap_phase = "Unknown Bootstrap TAG. This is harmless. Please run this program from command line to view console output and report this."
-                    sys.stdout.write('Unknown Bootstrap TAG. Full message is shown in the very next line:\n')
+                    ## Unknown / newer tag: fall back to Tor's own human-readable
+                    ## SUMMARY (sanitized, since it is untrusted) rather than a
+                    ## generic placeholder, so e.g. proxy phases still read well.
+                    summary_match = re.search(r'SUMMARY="([^"]*)"', bootstrap_status)
+                    if summary_match:
+                        bootstrap_phase = sanitize_string(summary_match.group(1))
+                    else:
+                        bootstrap_phase = 'Connecting to the Tor network...'
+                    sys.stdout.write('Unknown Bootstrap TAG: %s\n'
+                                     % sanitize_string(bootstrap_tag))
                     sys.stdout.flush()
                 ## bootstrap_status is untrusted Tor output; sanitize before
                 ## writing it to the terminal.
