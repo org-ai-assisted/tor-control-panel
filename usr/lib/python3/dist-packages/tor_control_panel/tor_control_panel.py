@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import *
 from subprocess import call, Popen, PIPE
 
 import os
-import re
 import glob
 import tempfile
 
@@ -598,7 +597,10 @@ class TorControlPanel(QDialog):
                             lines = f.readlines()
                             for line in lines:
                                 if line.startswith('Bridge'):
-                                    line = line.strip('Bridge' '\n')
+                                    ## Remove the 'Bridge' prefix; str.strip()
+                                    ## takes a character SET, so it would mangle
+                                    ## lines starting/ending with those letters.
+                                    line = line[len('Bridge'):].strip()
                                     self.custom_bridges.append(line)
                     f.close()
                     self.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
@@ -706,7 +708,10 @@ class TorControlPanel(QDialog):
                         with open(self.tor_log_html, 'w') as fw:
                             for line in lines:
                                 line = line + '\n'
-                                line = re.sub(line[12:19], '...', line)
+                                ## Redact the fixed column range; using the slice
+                                ## as a regex pattern crashes on metacharacters
+                                ## and, when empty, inserts '...' between chars.
+                                line = line[:12] + '...' + line[19:]
                                 line = line.replace('[warn]', self.warn_style)
                                 line = line.replace('[error]', self.error_style)
                                 if '[warn]' in line or '[error]' in line:
@@ -754,6 +759,17 @@ class TorControlPanel(QDialog):
         else:
             self.use_proxy = False
 
+    def set_network_toggle(self, label):
+        ## Ensure the bridges selector ends with exactly one network toggle
+        ## entry ('Disable network' or 'Enable network'). Removing by text
+        ## rather than a hard-coded index avoids appending duplicates.
+        for text in ('Disable network', 'Enable network'):
+            index = self.bridges_combo.findText(text)
+            while index != -1:
+                self.bridges_combo.removeItem(index)
+                index = self.bridges_combo.findText(text)
+        self.bridges_combo.addItem(label)
+
     def refresh(self, bootstrap):
         ## get status
         tor_is_enabled = tor_status.tor_status() == 'tor_enabled'
@@ -771,22 +787,19 @@ class TorControlPanel(QDialog):
             if not tor_is_running:
                 self.tor_status = 'stopped'
                 tor_state = False
-                self.bridges_combo.removeItem(8)
-                self.bridges_combo.addItem('Disable network')
+                self.set_network_toggle('Disable network')
 
             if not tor_is_enabled:
                 if tor_is_running:
                     self.tor_status = 'disabled-running'
                     tor_state = True
-                    self.bridges_combo.removeItem(8)
-                    self.bridges_combo.addItem('Enable network')
+                    self.set_network_toggle('Enable network')
 
 
                 elif not tor_is_running:
                     self.tor_status = 'disabled'
                     tor_state = False
-                    self.bridges_combo.removeItem(8)
-                    self.bridges_combo.addItem('Enable network')
+                    self.set_network_toggle('Enable network')
 
             self.message = self.tor_message[self.tor_status_list.index(
                 self.tor_status)]

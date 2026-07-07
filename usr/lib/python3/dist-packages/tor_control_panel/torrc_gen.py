@@ -120,7 +120,7 @@ def parse_torrc():
     torrc_file_contents = torrc_file_path_obj.read_text(encoding="utf-8")
     torrc_file_lines = torrc_file_contents.split("\n")
     use_bridge = 'UseBridges' in torrc_file_contents
-    use_custom_bridges = '# Custom briges are used' in torrc_file_contents
+    use_custom_bridges = '# Custom bridges are used' in torrc_file_contents
     use_proxy = 'Proxy' in torrc_file_contents
 
     bridge_type = ''

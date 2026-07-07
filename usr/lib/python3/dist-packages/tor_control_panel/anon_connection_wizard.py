@@ -666,6 +666,9 @@ class AnonConnectionWizard(QWizard):
         self.proxy_type = ''
         self.tor_status = ''
         self.bootstrap_done = False
+        ## Initialized here so cancel_button_clicked() cannot AttributeError when
+        ## the wizard is closed before a bootstrap thread is ever started.
+        self.bootstrap_thread = None
 
         self.reply = None
         self.tor_status_result = None
@@ -761,9 +764,14 @@ class AnonConnectionWizard(QWizard):
 
         elif bootstrap_phase == 'cookie_authentication_failed':
             self.bootstrap_thread.terminate()
-            buttonReply = QMessageBox(QMessageBox.Warning, 'Tor Controller Authentication Failed', '''Tor allows
-                                              for authentication by reading it a cookie file, but we cannot read
-                                              that file (probably due to permissions)''', QMessageBox.Ok)
+            ## Use the QMessageBox.warning static method (as the no_controller
+            ## branch above does) so the dialog is actually shown and the return
+            ## value is a StandardButton to compare against; constructing a
+            ## QMessageBox without exec_() showed nothing and never matched Ok.
+            buttonReply = QMessageBox.warning(self, 'Tor Controller Authentication Failed',
+                                              'Tor allows for authentication by reading a cookie '
+                                              'file, but we cannot read that file (probably due to '
+                                              'permissions).')
             if buttonReply == QMessageBox.Ok:
                 sys.exit(1)
 
@@ -885,6 +893,10 @@ class AnonConnectionWizard(QWizard):
 
             if not Common.proxy_password == 'None':
                 args.append(Common.proxy_password)
+            else:
+                ## Keep the argument count at 7 so gen_torrc() (which requires
+                ## len(args) >= 7) still emits the proxy instead of dropping it.
+                args.append('')
         else:
             args.append('None')
 
