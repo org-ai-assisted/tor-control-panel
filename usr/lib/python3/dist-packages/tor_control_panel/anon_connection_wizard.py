@@ -192,7 +192,7 @@ class BridgeWizardPage(QWizardPage):
 
         self.bridges_frame = QFrame()
         self.bridges_layout = QHBoxLayout(self.bridges_frame)
-        self.bridges_label = QLabel(self.bridges_frame)
+        self.bridges_label = QLabel()
         self.bridges_combo = QComboBox(self.bridges_frame)
         self.bridges_combo.setMaximumHeight(24)
         self.bridges_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
@@ -202,12 +202,12 @@ class BridgeWizardPage(QWizardPage):
         self.custom_frame = QFrame()
         self.custom_frame.setMinimumSize(425, 520)
         self.custom_layout = QGridLayout(self.custom_frame)
-        self.custom_label = QLabel(self.custom_frame)
+        self.custom_label = QLabel()
         self.custom_label.setMinimumHeight(24)
-        self.custom_bridges_help = QPushButton(self.custom_frame)
+        self.custom_bridges_help = QPushButton()
         self.custom_bridges_help.setMinimumSize(120, 24)
         self.h_spacer = QSpacerItem(40, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.custom_bridges = QtWidgets.QTextEdit(self.custom_frame)
+        self.custom_bridges = QtWidgets.QTextEdit()
         self.custom_bridges.setMinimumSize(440, 480)
 
         self.custom_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -507,13 +507,13 @@ class TorrcPage(QWizardPage):
 
         self.steps = Common.wizard_steps
 
-        self.title_frame = QFrame(self)
+        self.title_frame = QFrame()
         self.title_layout = QHBoxLayout(self.title_frame)
 
         self.title_label = QLabel()
         self.title_layout.addWidget(self.title_label, Qt.AlignmentFlag.AlignLeft)
 
-        self.info_frame = QFrame(self)
+        self.info_frame = QFrame()
         self.info_layout = QGridLayout(self.info_frame)
         self.status_label = QLabel()
         self.bridge_type_label = QLabel()
@@ -535,7 +535,7 @@ class TorrcPage(QWizardPage):
 
         self.torrc_frame = QFrame()
         self.torrc_layout = QVBoxLayout(self.torrc_frame)
-        self.torrc_text = QTextBrowser(self)
+        self.torrc_text = QTextBrowser()
         self.torrc_layout.addWidget(self.torrc_text, 2)
 
         self.layout = QVBoxLayout()
@@ -589,7 +589,7 @@ class TorStatusPage(QWizardPage):
     def __init__(self):
         super(TorStatusPage, self).__init__()
         self.steps = Common.wizard_steps
-        self.text = QLabel(self)
+        self.text = QLabel()
         self.bootstrap_progress = QProgressBar(self)
 
         self.layout = QGridLayout()
