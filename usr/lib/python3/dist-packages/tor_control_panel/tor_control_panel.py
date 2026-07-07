@@ -567,7 +567,7 @@ class TorControlPanel(QDialog):
             self.proxy_user_edit.hide()
             self.proxy_pwd_label.hide()
             self.proxy_pwd_edit.hide()
-        elif not proxy == 'None':
+        elif proxy != 'None':
             self.proxy_ip_label.show()
             self.proxy_ip_edit.show()
             self.proxy_port_label.show()
@@ -651,7 +651,7 @@ class TorControlPanel(QDialog):
                 self.run_async(tor_status.set_enabled,
                                lambda result: self._after_enable_network())
 
-            if not self.proxy_combo.currentText() == 'None':
+            if self.proxy_combo.currentText() != 'None':
                 if self.check_valid_proxy_settings():
                     self.use_proxy = True
                 else:
@@ -789,11 +789,11 @@ class TorControlPanel(QDialog):
         self.use_custom_bridges = bridge_type == 'Custom bridges'
 
         self.proxy_type.setText(args[1])
-        if not self.proxy_type.text() == 'None':
+        if self.proxy_type.text() != 'None':
             self.use_proxy = True
             index = self.proxy_combo.findText(args[1])
             self.proxy_combo.setCurrentIndex(index)
-            if not args[1] == 'None':
+            if args[1] != 'None':
                 self.proxy_ip_edit.setText(args[2])
                 self.proxy_port_edit.setText(args[3])
                 self.proxy_user_edit.setText(args[4])

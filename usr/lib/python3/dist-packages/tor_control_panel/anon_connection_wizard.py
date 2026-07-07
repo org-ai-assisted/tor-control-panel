@@ -325,7 +325,7 @@ class BridgesWizardPage(QWizardPage):
             return self.steps.index('proxy_wizard_page')
 
         if Common.use_custom_bridges:
-            if not self.custom_bridges.toPlainText() == "":
+            if self.custom_bridges.toPlainText() != "":
                 Common.bridge_type = self.bridges_combo.currentText()
                 Common.custom_bridges = self.custom_bridges.toPlainText()
 
