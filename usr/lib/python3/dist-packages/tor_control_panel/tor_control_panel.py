@@ -22,6 +22,25 @@ from sanitize_string.sanitize_string_lib import sanitize_string
 from . import tor_status, tor_bootstrap, torrc_gen, info, validators
 
 
+class CommandThread(QtCore.QThread):
+    ## Runs a blocking privileged / subprocess operation (e.g. Enable network's
+    ## leaprun calls) off the GUI thread so the UI stays responsive. The callable
+    ## must NOT touch Qt widgets -- do any UI work in the `done` slot, which fires
+    ## on the GUI thread.
+    done = QtCore.pyqtSignal(object)
+
+    def __init__(self, parent, func):
+        super().__init__(parent)
+        self._func = func
+
+    def run(self):
+        try:
+            result = self._func()
+        except Exception:
+            result = None
+        self.done.emit(result)
+
+
 class TorControlPanel(QDialog):
     def __init__(self):
         super(TorControlPanel, self).__init__()
@@ -479,6 +498,25 @@ class TorControlPanel(QDialog):
             self.control_box.setEnabled(True)
             self.refresh_status()
 
+    def run_async(self, func, on_done):
+        ## Run a blocking privileged operation off the GUI thread so the window
+        ## does not freeze (e.g. Enable network's leaprun restart/reload/status).
+        ## on_done(result) runs back on the GUI thread when func returns.
+        thread = CommandThread(self, func)
+        if not hasattr(self, '_command_threads'):
+            ## Keep a strong reference so a running QThread is not GC'd.
+            self._command_threads = set()
+        self._command_threads.add(thread)
+        thread.done.connect(on_done)
+        thread.finished.connect(lambda: self._command_threads.discard(thread))
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def _after_enable_network(self):
+        ## GUI-thread continuation after set_enabled() finished off-thread.
+        self.restart_tor()
+        self.exit_configuration()
+
     def stop_bootstrap_thread(self):
         ## Guard against a terminate() before start_bootstrap() ever created the
         ## thread, which would otherwise raise AttributeError.
@@ -602,13 +640,16 @@ class TorControlPanel(QDialog):
                 self.use_default_bridges = False
 
             elif self.bridges_combo.currentText() == 'Disable network':
-                tor_status.set_disabled()
-                self.exit_configuration()
+                ## Run the blocking leaprun off the GUI thread; finish the UI
+                ## update when it returns.
+                self.run_async(tor_status.set_disabled,
+                               lambda result: self.exit_configuration())
 
             elif self.bridges_combo.currentText() == 'Enable network':
-                tor_status.set_enabled()
-                self.restart_tor()
-                self.exit_configuration()
+                ## set_enabled() runs several blocking leaprun calls; do them off
+                ## the GUI thread, then restart / show bootstrap on completion.
+                self.run_async(tor_status.set_enabled,
+                               lambda result: self._after_enable_network())
 
             if not self.proxy_combo.currentText() == 'None':
                 if self.check_valid_proxy_settings():
