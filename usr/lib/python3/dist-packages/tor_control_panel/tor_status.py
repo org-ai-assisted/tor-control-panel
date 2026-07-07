@@ -66,8 +66,14 @@ def _write_disable_network(value):
     acw-write-torrc helper (write_to_temp_then_move). Shared by set_enabled()
     and set_disabled().
     '''
-    with open(torrc_file_path, 'r', encoding="utf-8") as f:
-        lines = f.read().split('\n')
+    ## On plain Debian / Kicksecure the drop-in may not exist yet; set_enabled()
+    ## / set_disabled() are documented to repair a missing torrc, so treat an
+    ## absent file as empty and create it rather than raising FileNotFoundError.
+    if os.path.exists(torrc_file_path):
+        with open(torrc_file_path, 'r', encoding="utf-8") as f:
+            lines = f.read().split('\n')
+    else:
+        lines = []
 
     found = False
     for index, line in enumerate(lines):

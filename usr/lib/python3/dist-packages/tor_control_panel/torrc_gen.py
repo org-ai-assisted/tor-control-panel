@@ -58,6 +58,36 @@ def torrc_path():
 def user_path():
     return torrc_user_file_path
 
+def torrc_include_directive():
+    '''The %include line the top-level torrc must contain for Tor to actually
+    read our drop-in directory.
+
+    Writing a drop-in is pointless if the main torrc does not pull in torrc_dir:
+    on plain Debian the stock /etc/tor/torrc has no such %include (Debian bug
+    #866187), and Tor is started with `-f /etc/tor/torrc`, so a drop-in we write
+    is silently IGNORED. On Whonix the anon-gw config supplies the include.
+    '''
+    return '%include ' + torrc_dir + '/*.conf'
+
+def main_torrc_includes_dropin(main_torrc_text):
+    '''True if `main_torrc_text` (the top-level torrc Tor is launched with)
+    has an active %include that pulls in our drop-in directory, so the
+    directives we write there are actually applied rather than ignored.
+
+    A commented-out %include does not count. The %include target may name the
+    directory, a glob inside it, or a specific file in it -- any of these means
+    Tor reads torrc_dir.
+    '''
+    for line in main_torrc_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('#'):
+            continue
+        parts = stripped.split(None, 1)
+        if parts and parts[0] == '%include' and len(parts) == 2:
+            if torrc_dir in parts[1]:
+                return True
+    return False
+
 def gen_torrc(args):
     bridge_type = str(args[0]) if len(args) > 0 else 'None'
     custom_bridges = str(args[1]) if len(args) > 1 else 'error-unknown-bridge-type'
