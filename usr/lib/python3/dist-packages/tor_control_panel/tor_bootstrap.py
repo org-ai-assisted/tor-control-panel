@@ -143,8 +143,16 @@ class TorBootstrap(QThread):
             bootstrap_status = self.tor_controller.get_info("status/bootstrap-phase")
 
             if bootstrap_status != self.previous_status:
-                bootstrap_percent = int(re.match('.* PROGRESS=([0-9]+).*', bootstrap_status).group(1))
-                bootstrap_tag = re.search(r'TAG=(.*) +SUMMARY', bootstrap_status).group(1)
+                progress_match = re.match('.* PROGRESS=([0-9]+).*', bootstrap_status)
+                tag_match = re.search(r'TAG=(.*) +SUMMARY', bootstrap_status)
+                if not (progress_match and tag_match):
+                    ## Unexpected status line: record it and skip, rather than
+                    ## crashing the bootstrap thread on a None .group() call.
+                    self.previous_status = bootstrap_status
+                    time.sleep(0.2)
+                    continue
+                bootstrap_percent = int(progress_match.group(1))
+                bootstrap_tag = tag_match.group(1)
                 ''' Use TAG= keyword for bootstrap_phase, according to:
                 https://gitweb.torproject.org/tor-launcher.git/plain/README-BOOTSTRAP
                 '''

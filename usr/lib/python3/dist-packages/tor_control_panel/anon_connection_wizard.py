@@ -700,12 +700,9 @@ class AnonConnectionWizard(QWizard):
                     lines = f.readlines()
                     for line in lines:
                         if line.startswith('Bridge'):
-                            ## The '[6:]' trims off the first 6 characters of
-                            ## the string, i.e. the substring 'Bridge'.
-                            ##
-                            ## TODO: Is there a space here we should be
-                            ## trimming off too?
-                            line = line.strip('\n')[6:]
+                            ## Drop the 'Bridge' prefix and the surrounding
+                            ## whitespace (including the space after 'Bridge').
+                            line = line[len('Bridge'):].strip()
                             self.bridge_wizard_page.custom_bridges.append(line)
             f.close()
             self.bridge_wizard_page.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
@@ -886,17 +883,12 @@ class AnonConnectionWizard(QWizard):
             args.append(self.proxy_wizard_page.ip_edit.text())
             args.append(self.proxy_wizard_page.port_edit.text())
 
-            if not Common.proxy_username == 'None':
-                args.append(Common.proxy_username)
-            else:
-                args.append('')
-
-            if not Common.proxy_password == 'None':
-                args.append(Common.proxy_password)
-            else:
-                ## Keep the argument count at 7 so gen_torrc() (which requires
-                ## len(args) >= 7) still emits the proxy instead of dropping it.
-                args.append('')
+            ## proxy_username / proxy_password always come from the proxy page
+            ## as strings (empty when unset), so append them unconditionally.
+            ## This keeps the argument count at 7 so gen_torrc() (which requires
+            ## len(args) >= 7) emits the proxy instead of dropping it.
+            args.append(Common.proxy_username)
+            args.append(Common.proxy_password)
         else:
             args.append('None')
 

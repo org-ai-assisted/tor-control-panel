@@ -456,8 +456,7 @@ class TorControlPanel(QDialog):
             self.refresh_status()
 
         if bootstrap_phase == 'no_controller':
-            if hasattr(self, 'bootstrap_thread'):
-                self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
             self.tor_status = 'no_controller'
             self.message = info.no_controller()
             self.bootstrap_progress.hide()
@@ -466,18 +465,24 @@ class TorControlPanel(QDialog):
             self.refresh_status()
 
         elif bootstrap_phase == 'socket_error':
-            self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
             self.message = info.socket_error()
             self.bootstrap_progress.hide()
             self.control_box.setEnabled(True)
             self.refresh_status()
 
         elif bootstrap_phase == 'cookie_authentication_failed':
-            self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
             self.message = info.cookie_error()
             self.bootstrap_progress.hide()
             self.control_box.setEnabled(True)
             self.refresh_status()
+
+    def stop_bootstrap_thread(self):
+        ## Guard against a terminate() before start_bootstrap() ever created the
+        ## thread, which would otherwise raise AttributeError.
+        if getattr(self, 'bootstrap_thread', None):
+            self.bootstrap_thread.terminate()
 
     def start_bootstrap(self):
         self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
@@ -743,14 +748,14 @@ class TorControlPanel(QDialog):
         index = self.bridges_combo.findText(args[0])
         self.bridges_combo.setCurrentIndex(index)
 
-        if self.bridge_type in self.default_bridges:
+        if self.bridge_type.text() in self.default_bridges:
             self.use_default_bridges = True
 
-        elif self.bridge_type == 'Custom bridges':
+        elif self.bridge_type.text() == 'Custom bridges':
             self.use_custom_bridges = True
 
         self.proxy_type.setText(args[1])
-        if not self.proxy_type == 'None':
+        if not self.proxy_type.text() == 'None':
             self.use_proxy = True
             index = self.proxy_combo.findText(args[1])
             self.proxy_combo.setCurrentIndex(index)
@@ -815,7 +820,7 @@ class TorControlPanel(QDialog):
 
     def restart_tor(self):
         if not self.bootstrap_done:
-            self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
         ## if running restart tor directly stem returns
         ## bootstrap_percent 100 or a socket error, randomly.
         self.stop_tor()
@@ -829,7 +834,7 @@ class TorControlPanel(QDialog):
         self.restart_button.setEnabled(True)
         if not self.bootstrap_done:
             self.bootstrap_progress.hide()
-            self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
         stop_command = 'leaprun acw-tor-control-stop'
         p = Popen(stop_command, shell=True)
         p.wait()
@@ -837,7 +842,7 @@ class TorControlPanel(QDialog):
 
     def quit(self):
         if not self.bootstrap_done:
-            self.bootstrap_thread.terminate()
+            self.stop_bootstrap_thread()
         self.accept()
 
 

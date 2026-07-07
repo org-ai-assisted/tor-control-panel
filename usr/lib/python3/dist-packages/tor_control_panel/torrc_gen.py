@@ -74,7 +74,11 @@ def gen_torrc(args):
         bridge = str(custom_bridges.split()[0]) #.lower()
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
-        torrc_content.append(bridges_command[bridges_type.index(bridge)])
+        ## Only emit a ClientTransportPlugin line when the first token is a
+        ## pluggable transport we know (obfs4/snowflake/meek); a plain/vanilla
+        ## bridge line would otherwise raise ValueError/IndexError here.
+        if bridge in bridges_type[:len(bridges_command)]:
+            torrc_content.append(bridges_command[bridges_type.index(bridge)])
         bridge_custom_list = custom_bridges.split('\n')
         for bridge in bridge_custom_list:
             if bridge.strip():
@@ -194,5 +198,3 @@ def parse_torrc():
         proxy_password = ''
 
     return (bridge_type, proxy_type, proxy_ip, proxy_port, proxy_username, proxy_password)
-
-    return None
