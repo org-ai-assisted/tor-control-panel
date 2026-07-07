@@ -123,8 +123,12 @@ def parse_torrc():
     # command = 'leaprun tor-config-sane'
     # call(command, shell=True)
 
-    # if os.path.exists(torrc_file_path):
+    ## On a plain Debian / Kicksecure system the tor-control-panel torrc may
+    ## not exist yet (no Whonix drop-in). Treat an absent file as "no
+    ## configuration" (defaults) rather than crashing the whole GUI.
     torrc_file_path_obj = Path(torrc_file_path)
+    if not torrc_file_path_obj.exists():
+        return ('None', 'None', '', '', '', '')
     torrc_file_contents = torrc_file_path_obj.read_text(encoding="utf-8")
     torrc_file_lines = torrc_file_contents.split("\n")
     use_bridge = 'UseBridges' in torrc_file_contents

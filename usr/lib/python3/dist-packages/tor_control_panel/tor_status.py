@@ -26,6 +26,12 @@ def tor_status():
         ## Match the DisableNetwork directive itself (first token on a
         ## non-comment line), not any substring -- a commented-out or partial
         ## occurrence must not be mistaken for the active setting.
+        ##
+        ## On a plain Debian / Kicksecure system the torrc may be absent; Tor's
+        ## own default is DisableNetwork 0 (enabled), so report enabled rather
+        ## than crashing.
+        if not os.path.exists(torrc_file_path):
+            return True
         with open(torrc_file_path, 'r', encoding="utf-8") as f:
             for line in f:
                 stripped = line.strip()
