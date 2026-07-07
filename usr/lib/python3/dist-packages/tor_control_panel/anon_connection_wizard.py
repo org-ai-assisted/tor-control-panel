@@ -477,7 +477,8 @@ class ProxyWizardPage(QWizardPage):
     def valid_ip(self, address):
         import socket
         try:
-            socket.gethostbyname(address)
+            ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
+            socket.getaddrinfo(address, None)
             return True
         except socket.error:
             return False
@@ -644,6 +645,12 @@ class AnonConnectionWizard(QWizard):
         else:
             args = ['None', 'None', 'None']
             torrc_gen.gen_torrc(args)
+
+        ## Remember the Tor enable/disable state at wizard launch so that
+        ## cancel/back can restore it. Without this, init_tor_status stayed ''
+        ## and the restore branches in cancel_button_clicked/back_button_clicked
+        ## were dead code.
+        Common.init_tor_status = tor_status.tor_status()
 
         self.steps = Common.wizard_steps
 

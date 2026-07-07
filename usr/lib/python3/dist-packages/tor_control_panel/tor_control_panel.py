@@ -519,7 +519,8 @@ class TorControlPanel(QDialog):
     def valid_ip(self, address):
         import socket
         try:
-            socket.gethostbyname(address)
+            ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
+            socket.getaddrinfo(address, None)
             return True
         except socket.error:
             return False
