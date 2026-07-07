@@ -76,9 +76,11 @@ def _write_disable_network(value):
         if line.strip().startswith('#'):
             continue
         if line.strip().split()[:1] == ['DisableNetwork']:
+            ## Normalize every active directive (a duplicated torrc could carry
+            ## more than one), not just the first, so no conflicting value is
+            ## left behind.
             lines[index] = 'DisableNetwork ' + value
             found = True
-            break
     if not found:
         lines.append('DisableNetwork ' + value)
 
