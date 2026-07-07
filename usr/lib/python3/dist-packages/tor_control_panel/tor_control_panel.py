@@ -240,22 +240,28 @@ class TorControlPanel(QDialog):
         self.view_layout = QHBoxLayout()
 
         self.view_frame = QFrame()
-        self.view_frame.setMinimumHeight(70)
+        self.view_frame.setMinimumHeight(105)
         self.files_box = QGroupBox(self.view_frame)
         self.refresh_button = QPushButton(self.refresh_icon, ' Refresh')
         self.view_layout.setAlignment(Qt.AlignTop)
         self.view_layout.addWidget(self.view_frame)
         self.view_layout.addWidget(self.refresh_button)
 
-        ## Radio buttons are added to files_box_layout below, which reparents
-        ## them, so they need no explicit parent here.
+        ## Real column-header labels instead of space-padding the group-box
+        ## title (which breaks under a different font). Radio buttons are added
+        ## to files_box_layout below, which reparents them, so they need no
+        ## explicit parent here.
         self.files_box_layout = QGridLayout(self.files_box)
+        self.files_header = QLabel('Files')
+        self.logs_header = QLabel('Logs')
         self.torrc_button = QRadioButton()
         self.log_button = QRadioButton()
         self.journal_button = QRadioButton()
-        self.files_box_layout.addWidget(self.torrc_button, 0, 0)
-        self.files_box_layout.addWidget(self.log_button, 0, 1)
-        self.files_box_layout.addWidget(self.journal_button, 1, 1)
+        self.files_box_layout.addWidget(self.files_header, 0, 0)
+        self.files_box_layout.addWidget(self.logs_header, 0, 1)
+        self.files_box_layout.addWidget(self.torrc_button, 1, 0)
+        self.files_box_layout.addWidget(self.log_button, 1, 1)
+        self.files_box_layout.addWidget(self.journal_button, 2, 1)
 
         self.torrc_button.toggled.connect(self.refresh_logs)
         self.log_button.toggled.connect(self.refresh_logs)
@@ -438,7 +444,7 @@ class TorControlPanel(QDialog):
         self.files_box_layout.setVerticalSpacing(0)
         self.files_box_layout.setHorizontalSpacing(20)
         self.files_box_layout.setContentsMargins(6, 0, 6, 0)
-        self.files_box.setTitle('  Files            Logs')
+        self.files_box.setTitle('View')
         self.torrc_button.setText('&torrc')
         self.log_button.setText('Tor &log')
         self.journal_button.setText('systemd &journal')
