@@ -19,11 +19,6 @@ acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
 
 def tor_status():
-    print("tor_status was called.")
-
-    # output = self.tor_enabled_check()  #subprocess.check_output('/usr/libexec/helper-scripts/tor_enabled_check')
-    # output = output.decode("UTF-8").strip()
-
     def tor_enabled_check():
         ## Match the DisableNetwork directive itself (first token on a
         ## non-comment line), not any substring -- a commented-out or partial
@@ -48,10 +43,8 @@ def tor_status():
         return None
 
     if tor_enabled_check():
-        print("tor_status status: tor_enabled")
         return "tor_enabled"
     else:
-        print("tor_status status: tor_disabled")
         return "tor_disabled"
 
 ## Unlike tor_status(), which only shows the current state of the torrc,
