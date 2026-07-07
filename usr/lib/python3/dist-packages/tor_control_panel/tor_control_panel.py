@@ -109,8 +109,7 @@ class TorControlPanel(QDialog):
         self.error_style = '<span style="background-color:red">{}' \
             .format('[error]')
 
-        # Has to be declared here to make the messagebox modal.
-        # See lines 502 and 624.
+        # Declared here (not where it is shown) so the message box is modal.
         self.valid_custom_bridges = QMessageBox(QMessageBox.Warning, 'Warning',
                                                     info.invalid_custom_bridges(), QMessageBox.Ok)
 
