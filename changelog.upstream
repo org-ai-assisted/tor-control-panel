@@ -1,3 +1,28 @@
+commit 8bdaa2457825fcd061bf49f8b38c0f01ab2578de
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 7 06:21:01 2026 -0400
+
+    remove vim modlines
+
+commit ad6593da6b0ff5d9466c70d3d9cdd6b6325290ec
+Merge: 308e1c5 7327845
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 7 06:19:20 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/ArrayBolt3/arraybolt3/trixie'
+
+commit 73278454eea481e58ce54c9c56d059c9c99b4bd2
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Mon Jul 6 00:12:42 2026 -0400
+
+    Merge modified version of the unified tcp+acw implementation from @troubadoour
+
+commit 308e1c51d545b5d20c74fab57c71e2ffa4f10a10
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Wed May 20 22:26:03 2026 +0000
+
+    bumped changelog version
+
 commit 0582ba7a7037cf1961704c4516f737edd079e039
 Author: Patrick Schleizer <adrelanos@whonix.org>
 Date:   Wed May 20 16:57:24 2026 -0400
