@@ -5,7 +5,6 @@
 
 import json
 import os
-from subprocess import call
 from pathlib import Path
 
 from . import info
@@ -51,14 +50,12 @@ def user_path():
 
 def gen_torrc(args):
     bridge_type = str(args[0]) if len(args) > 0 else 'None'
-    print(f"DEBUG bridge_type from gen_torrc : {bridge_type} ")
     custom_bridges = str(args[1]) if len(args) > 1 else 'error-unknown-bridge-type'
-    print(f"DEBUG custom_bridges from gen_torrc : {custom_bridges}")
     proxy_type = str(args[2]) if len(args) > 2 else 'None'
 
     torrc_content = ['%s# %s\n' % (info.torrc_text(), torrc_user_file_path), 'DisableNetwork 0\n']
 
-    if not bridge_type == 'None':
+    if bridge_type != 'None':
         if bridge_type in bridges_type:
             torrc_content.append(command_useBridges)
             torrc_content.append(bridges_command[bridges_type.index(bridge_type)])
@@ -66,11 +63,8 @@ def gen_torrc(args):
             for bridge in bridges['bridges'][bridge_type]:
                 if bridge.strip():
                     torrc_content.append('{0}\n'.format(bridge))
-    else:
-        torrc_content.append('')
 
-    if not custom_bridges == 'None':
-        print(f"DEBUG custom bridges / {custom_bridges}")
+    if custom_bridges != 'None':
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
         ## Emit the matching ClientTransportPlugin line for every pluggable
@@ -93,8 +87,6 @@ def gen_torrc(args):
         for bridge in custom_bridges.split('\n'):
             if bridge.strip():
                 torrc_content.append('Bridge {0}\n'.format(bridge))
-    else:
-        torrc_content.append('')
 
     # Required for meek and snowflake only.
     # https://forums.whonix.org/t/censorship-circumvention-tor-pluggable-transports/2601/9
@@ -121,8 +113,6 @@ def gen_torrc(args):
                     torrc_content.append('{0} {1}\n'.format(proxy_auth[1], proxy_username))
                     if proxy_password:
                         torrc_content.append('{0} {1}\n'.format(proxy_auth[2], proxy_password))
-    else:
-        torrc_content.append('')
 
     final_torrc_content = ''.join(torrc_content)
     write_to_temp_then_move(final_torrc_content)
@@ -140,11 +130,13 @@ def parse_torrc():
     use_custom_bridges = '# Custom bridges are used' in torrc_file_contents
     use_proxy = 'Proxy' in torrc_file_contents
 
-    bridge_type = ''
+    ## Default to 'None' so use_bridge with no parseable Bridge line (and not
+    ## custom) does not leave bridge_type as an empty string.
+    bridge_type = 'None'
 
     if use_bridge:
         for line in torrc_file_lines:
-            if line.startswith('#'):
+            if line.strip().startswith('#'):
                 continue
 
             if line.startswith('Bridge'):

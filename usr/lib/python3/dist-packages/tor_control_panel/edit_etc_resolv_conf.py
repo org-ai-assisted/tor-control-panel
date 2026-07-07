@@ -19,7 +19,7 @@ def edit_etc_resolv_conf_add():
    try:
       command = ['leaprun', 'anon-dns-add']
       p = Popen(command, stdout=PIPE, stderr=PIPE)
-      stdout, stderr = p.communicate()
+      p.communicate()
    except Exception:
       error_msg = "edit-etc-resolv-conf add unexpected error: " + str(sys.exc_info()[0])
       print(error_msg)
@@ -32,7 +32,7 @@ def edit_etc_resolv_conf_remove():
    try:
       command = ['leaprun', 'anon-dns-remove']
       p = Popen(command, stdout=PIPE, stderr=PIPE)
-      stdout, stderr = p.communicate()
+      p.communicate()
    except Exception:
       error_msg = "edit-etc-resolv-conf remove unexpected error: " + str(sys.exc_info()[0])
       print(error_msg)

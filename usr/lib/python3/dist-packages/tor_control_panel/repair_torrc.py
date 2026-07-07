@@ -3,8 +3,9 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, sys
+import os
 import subprocess
+import traceback
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix = True
@@ -17,14 +18,12 @@ def repair_torrc():
         return
 
     try:
-        command = ['leaprun', 'tor-config-sane']
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate()
-        if not p.returncode == 0:
-            print("ERROR: leaprun tor-config-sane Exit Code:", p.returncode)
-    except Exception as e:
-        error_msg = "tor-config-sane unexpected error: " + str(e)
-        print(error_msg)
+        result = subprocess.run(['leaprun', 'tor-config-sane'])
+        if result.returncode != 0:
+            print("ERROR: leaprun tor-config-sane exit code:", result.returncode)
+    except Exception:
+        print("tor-config-sane unexpected error:")
+        traceback.print_exc()
 
 def main():
     repair_torrc()

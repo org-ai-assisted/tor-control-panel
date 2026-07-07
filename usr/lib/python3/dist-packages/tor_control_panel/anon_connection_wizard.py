@@ -199,7 +199,7 @@ class BridgesWizardPage(QWizardPage):
         self.bridges_combo.setMaximumHeight(24)
         self.bridges_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Minimum)
         self.bridges_layout.addWidget(self.bridges_label)
-        self.bridges_layout.addWidget(self.bridges_combo, Qt.AlignmentFlag.AlignLeft)
+        self.bridges_layout.addWidget(self.bridges_combo, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.custom_frame = QFrame()
         self.custom_frame.setMinimumSize(425, 520)
@@ -485,7 +485,7 @@ class ProxyWizardPage(QWizardPage):
             ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
             socket.getaddrinfo(address, None)
             return True
-        except socket.error:
+        except OSError:
             return False
 
     def valid_port(self, port):
@@ -609,7 +609,6 @@ class TorStatusPage(QWizardPage):
     def __init__(self):
         super(TorStatusPage, self).__init__()
         self.steps = Common.wizard_steps
-        self.bootstrap_text = QLabel(self)
         self.text = QLabel(self)
         self.bootstrap_progress = QProgressBar(self)
 
@@ -705,7 +704,7 @@ class AnonConnectionWizard(QWizard):
         if Common.use_custom_bridges:
         # Retrieve custom bridges
             # if os.path.exists(Common.torrc_file_path):
-            with open(Common.torrc_file_path, 'r') as f:
+            with open(Common.torrc_file_path, 'r', encoding="utf-8") as f:
                 if '# Custom' in f.read():
                     self.bridge_wizard_page.custom_bridges.clear()
                     f.seek(0)
@@ -716,7 +715,6 @@ class AnonConnectionWizard(QWizard):
                             ## whitespace (including the space after 'Bridge').
                             line = line[len('Bridge'):].strip()
                             self.bridge_wizard_page.custom_bridges.append(line)
-            f.close()
             self.bridge_wizard_page.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
 
         if Common.use_default_bridges or Common.use_custom_bridges:
@@ -803,7 +801,8 @@ class AnonConnectionWizard(QWizard):
                 else:
                     self.torrc_page.bridge_text.setText(Common.bridge_type)
 
-                torrc_text = open(Common.torrc_file_path).read()
+                with open(Common.torrc_file_path, encoding="utf-8") as torrc_file:
+                    torrc_text = torrc_file.read()
                 self.torrc_page.torrc_text.setPlainText(torrc_text)
 
             if not Common.use_proxy:
@@ -832,7 +831,8 @@ class AnonConnectionWizard(QWizard):
                 ## clicks the connect button. This may overwrite the
                 ## previous .conf, but it does not matter.
                 cat(Common.acw_comm_file_path)
-                content = open(Common.torrc_file_path).read()
+                with open(Common.torrc_file_path, encoding="utf-8") as torrc_file:
+                    content = torrc_file.read()
                 write_to_temp_then_move(content)
 
                 self.tor_status_page.bootstrap_progress.show()
@@ -841,7 +841,7 @@ class AnonConnectionWizard(QWizard):
                 self.tor_status = self.tor_status_result[0]
                 self.tor_status_code = str(self.tor_status_result[1])
 
-                if self.tor_status == 'tor_enabled' or self.tor_status == 'tor_already_enabled':
+                if self.tor_status == 'tor_enabled':
                     self.tor_status_page.bootstrap_progress.show()
                     self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
                     self.bootstrap_thread.signal.connect(self.update_bootstrap)

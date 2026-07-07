@@ -424,6 +424,7 @@ class TorControlPanel(QDialog):
         self.refresh_button.setFlat(True)
 
     def newnym(self):
+        import stem
         from stem import Signal
         from stem.control import Controller
 

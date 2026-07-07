@@ -59,32 +59,34 @@ set_enabled() will:
 2. guarantee the final value of DisableNetwork is 0 in the file
 3. guarantee Tor uses DisableNetwork 0
 '''
-def set_enabled():
-    print("set_enabled was called.")
+def _write_disable_network(value):
+    '''Rewrite the torrc so the DisableNetwork directive equals `value`.
 
-    content = ''
-
-    # if os.path.exists(torrc_file_path):
+    Only the real directive (first token on a non-comment line) is changed, so
+    a commented-out or partial 'DisableNetwork' occurrence is left alone; the
+    directive is appended if absent. The result is staged via the privileged
+    acw-write-torrc helper (write_to_temp_then_move). Shared by set_enabled()
+    and set_disabled().
+    '''
     with open(torrc_file_path, 'r', encoding="utf-8") as f:
-        content = f.readlines()
+        lines = f.read().split('\n')
 
-    disable_network_found = False
-    for line in content:
-        if 'DisableNetwork' in line:
-            disable_network_found = True
+    found = False
+    for index, line in enumerate(lines):
+        if line.strip().startswith('#'):
+            continue
+        if line.strip().split()[:1] == ['DisableNetwork']:
+            lines[index] = 'DisableNetwork ' + value
+            found = True
             break
+    if not found:
+        lines.append('DisableNetwork ' + value)
 
-    if disable_network_found:
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
-            content = f.read().replace('DisableNetwork 1', 'DisableNetwork 0')
-    else:
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path,'r') as f:
-            content = f.read() + '\n' + 'DisableNetwork 0' + '\n'
-        # else:
-        #     content = 'DisableNetwork 0'
+    write_to_temp_then_move('\n'.join(lines))
 
-    write_to_temp_then_move(content)
+
+def set_enabled():
+    _write_disable_network('0')
 
     command = 'leaprun acw-tor-control-restart'
     tor_status_code = subprocess.call(command, shell=True)
@@ -111,32 +113,7 @@ set_disabled() will:
 3. guarantee Tor uses DisableNetwork 1
 '''
 def set_disabled():
-    print("set_disabled was called.")
-
-    content = ''
-
-    # if os.path.exists(torrc_file_path):
-    with open(torrc_file_path, 'r',  encoding="utf-8") as f:
-        content = f.readlines()
-
-    disable_network_found = False
-    for line in content:
-        if 'DisableNetwork' in line:
-            disable_network_found = True
-            break
-
-    if disable_network_found:
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
-            content = f.read().replace('DisableNetwork 0', 'DisableNetwork 1')
-
-    else:
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
-            content = f.read() + '\n' + 'DisableNetwork 1' + '\n'
-        # else:
-        #     content = 'DisableNetwork 1' + '\n'
-
-    write_to_temp_then_move(content)
+    _write_disable_network('1')
 
     command = 'leaprun acw-tor-control-stop'
     subprocess.call(command, shell=True)
