@@ -711,7 +711,10 @@ class TorControlPanel(QDialog):
                                 ## Redact the fixed column range; using the slice
                                 ## as a regex pattern crashes on metacharacters
                                 ## and, when empty, inserts '...' between chars.
-                                line = line[:12] + '...' + line[19:]
+                                ## Guard short lines (e.g. blank tail output) so
+                                ## they are not suffixed with a spurious '...'.
+                                if len(line) > 19:
+                                    line = line[:12] + '...' + line[19:]
                                 line = line.replace('[warn]', self.warn_style)
                                 line = line.replace('[error]', self.error_style)
                                 if '[warn]' in line or '[error]' in line:
