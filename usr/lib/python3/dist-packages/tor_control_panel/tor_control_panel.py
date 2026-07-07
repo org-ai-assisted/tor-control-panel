@@ -120,9 +120,9 @@ class TorControlPanel(QDialog):
         self.bootstrap_done = True
 
         self.tabs = QTabWidget()
-        self.tab1 = QWidget()
-        self.tab2 = QWidget()
-        self.tab3 = QWidget()
+        self.control_tab = QWidget()
+        self.utils_tab = QWidget()
+        self.logs_tab = QWidget()
 
         self.button_layout = QHBoxLayout()
         self.quit_button = QPushButton(self.exit_icon, ' Exit')
@@ -136,22 +136,22 @@ class TorControlPanel(QDialog):
         self.layout.addLayout(self.button_layout)
         self.setLayout(self.layout)
 
-        self.tab1_layout = QVBoxLayout(self.tab1)
+        self.control_tab_layout = QVBoxLayout(self.control_tab)
         self.info_frame = QFrame()
-        self.frame_layout = QGridLayout(self.info_frame)
-        self.frame_layout.setAlignment(Qt.AlignTop)
+        self.info_layout = QGridLayout(self.info_frame)
+        self.info_layout.setAlignment(Qt.AlignTop)
 
         self.status = QPushButton()
         self.status.setEnabled(False)
-        self.frame_layout.addWidget(self.status, 1, 0, 1, 1)
+        self.info_layout.addWidget(self.status, 1, 0, 1, 1)
         self.tor_message_browser = QTextBrowser()
-        self.frame_layout.addWidget(self.tor_message_browser, 1, 1, 2, 1)
+        self.info_layout.addWidget(self.tor_message_browser, 1, 1, 2, 1)
         self.bootstrap_progress = QtWidgets.QProgressBar()
-        self.frame_layout.addWidget(self.bootstrap_progress, 2, 1, 1, 1)
+        self.info_layout.addWidget(self.bootstrap_progress, 2, 1, 1, 1)
 
         self.user_frame = QFrame()
         self.user_layout = QHBoxLayout(self.user_frame)
-        self.config_frame = QGroupBox()
+        self.config_group_box = QGroupBox()
 
         self.bridges_label = QLabel()
         self.bridge_type = QLabel()
@@ -213,11 +213,11 @@ class TorControlPanel(QDialog):
         self.proxy_settings_layout.addWidget(self.prev_button, 2, 4)
         self.proxy_settings_layout.setAlignment(Qt.AlignRight)
 
-        self.config_layout = QVBoxLayout(self.config_frame)
+        self.config_layout = QVBoxLayout(self.config_group_box)
         self.config_layout.addLayout(self.config_frame_layout)
         self.config_layout.addLayout(self.proxy_settings_layout)
 
-        self.user_layout.addWidget(self.config_frame)
+        self.user_layout.addWidget(self.config_group_box)
 
         self.control_box = QGroupBox()
         self.restart_button = QPushButton(self.restart_icon, ' Restart Tor',
@@ -233,10 +233,10 @@ class TorControlPanel(QDialog):
 
         self.user_layout.addWidget(self.control_box)
 
-        self.tab1_layout.addWidget(self.info_frame)
-        self.tab1_layout.addWidget(self.user_frame)
+        self.control_tab_layout.addWidget(self.info_frame)
+        self.control_tab_layout.addWidget(self.user_frame)
 
-        self.tab2_layout = QVBoxLayout(self.tab2)
+        self.utils_tab_layout = QVBoxLayout(self.utils_tab)
         self.view_layout = QHBoxLayout()
         self.view_layout.setAlignment(Qt.AlignBottom)
 
@@ -264,10 +264,10 @@ class TorControlPanel(QDialog):
         self.file_browser = QTextBrowser()
         self.file_browser.setLineWrapMode(QTextBrowser.NoWrap)
 
-        self.tab2_layout.addLayout(self.view_layout)
-        self.tab2_layout.addWidget(self.file_browser)
+        self.utils_tab_layout.addLayout(self.view_layout)
+        self.utils_tab_layout.addWidget(self.file_browser)
 
-        self.custom_bridges_frame = QFrame(self.tab1)
+        self.custom_bridges_frame = QFrame(self.control_tab)
         self.custom_bridges_layout = QVBoxLayout(self.custom_bridges_frame)
         self.custom_bridges_help = QLabel(self.custom_bridges_frame)
         self.custom_bridges = QtWidgets.QTextEdit(self.custom_bridges_frame)
@@ -287,9 +287,9 @@ class TorControlPanel(QDialog):
         self.custom_buttons.setAlignment(Qt.AlignRight)
         self.custom_bridges_layout.addLayout(self.custom_buttons)
 
-        self.tab1_layout.addWidget(self.custom_bridges_frame)
+        self.control_tab_layout.addWidget(self.custom_bridges_frame)
 
-        self.utils_layout = QtWidgets.QVBoxLayout(self.tab3)
+        self.utils_layout = QtWidgets.QVBoxLayout(self.logs_tab)
 
         self.onioncircuits_box = QFrame()
         self.onions_layout = QVBoxLayout(self.onioncircuits_box)
@@ -321,9 +321,9 @@ class TorControlPanel(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        self.tabs.addTab(self.tab1, 'Control')
-        self.tabs.addTab(self.tab3, 'Utilities')
-        self.tabs.addTab(self.tab2, 'Logs')
+        self.tabs.addTab(self.control_tab, 'Control')
+        self.tabs.addTab(self.logs_tab, 'Utilities')
+        self.tabs.addTab(self.utils_tab, 'Logs')
 
         self.quit_button.setIconSize(QtCore.QSize(20, 20))
 
@@ -343,7 +343,7 @@ class TorControlPanel(QDialog):
         self.user_frame.setMinimumHeight(175)
         self.user_frame.setFrameShape(QFrame.Panel | QFrame.Raised)
 
-        self.config_frame.setTitle('User configuration')
+        self.config_group_box.setTitle('User configuration')
 
         self.bridges_label.setMaximumWidth(90)
         self.bridges_label.setText('Bridges type :')

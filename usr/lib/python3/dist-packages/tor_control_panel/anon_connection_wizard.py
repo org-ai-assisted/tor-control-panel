@@ -36,7 +36,7 @@ class Common:
                        'snowflake',
                        'meek']
 
-    bridges = torrc_gen.bridges_type
+    bridges = torrc_gen.bridge_types
 
     custom_bridges_accept: bool = False
 

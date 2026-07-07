@@ -24,7 +24,7 @@ bridges_command = ['ClientTransportPlugin obfs4 exec /usr/bin/obfs4proxy\n',
                    'ClientTransportPlugin snowflake exec /usr/bin/snowflake-client\n',
                    'ClientTransportPlugin meek_lite exec /usr/bin/obfs4proxy\n']
 
-bridges_type = ['obfs4',
+bridge_types = ['obfs4',
                 'snowflake',
                 'meek',
                 'Custom bridges']
@@ -56,9 +56,9 @@ def gen_torrc(args):
     torrc_content = ['%s# %s\n' % (info.torrc_text(), torrc_user_file_path), 'DisableNetwork 0\n']
 
     if bridge_type != 'None':
-        if bridge_type in bridges_type:
+        if bridge_type in bridge_types:
             torrc_content.append(command_useBridges)
-            torrc_content.append(bridges_command[bridges_type.index(bridge_type)])
+            torrc_content.append(bridges_command[bridge_types.index(bridge_type)])
             with open(bridges_default_path, encoding="utf-8") as bridges_file:
                 bridges = json.loads(bridges_file.read())
             for bridge in bridges['bridges'][bridge_type]:
