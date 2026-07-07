@@ -423,7 +423,7 @@ class ProxyWizardPage(QWizardPage):
         self.proxy_checkbox.setFont(font_description_main)
 
         self.proxy_frame.hide()
-        self.proxy_checkbox.toggled.connect(self.show_proxy_frame)
+        self.proxy_checkbox.toggled.connect(self.show_or_hide_proxy_frame)
         self.proxy_settings_label.setText("Enter the proxy settings.")
 
         self.proxy_help.setText('Help ?')
@@ -468,7 +468,7 @@ class ProxyWizardPage(QWizardPage):
 
         Common.proxy_type = self.proxy_combo.currentText()
 
-    def show_proxy_frame(self):
+    def show_or_hide_proxy_frame(self):
         if self.proxy_checkbox.isChecked():
             self.proxy_frame.show()
             Common.use_proxy = True
@@ -516,7 +516,7 @@ class TorrcPage(QWizardPage):
         self.info_frame = QFrame(self)
         self.info_layout = QGridLayout(self.info_frame)
         self.status_label = QLabel()
-        Common.bridge_type_label = QLabel()
+        self.bridge_type_label = QLabel()
         self.proxy_type_label = QLabel()
         self.status_text = QLabel()
         self.bridge_text = QLabel()
@@ -525,7 +525,7 @@ class TorrcPage(QWizardPage):
         self.show_torrc_button = QPushButton()
 
         self.info_layout.addWidget(self.status_label, 0, 0, Qt.AlignmentFlag.AlignLeft)
-        self.info_layout.addWidget(Common.bridge_type_label, 1, 0, Qt.AlignmentFlag.AlignLeft)
+        self.info_layout.addWidget(self.bridge_type_label, 1, 0, Qt.AlignmentFlag.AlignLeft)
         self.info_layout.addWidget(self.proxy_type_label, 2, 0, Qt.AlignmentFlag.AlignLeft)
         self.info_layout.addWidget(self.status_text, 0, 1, Qt.AlignmentFlag.AlignLeft)
         self.info_layout.addWidget(self.bridge_text, 1, 1, Qt.AlignmentFlag.AlignLeft)
@@ -560,7 +560,7 @@ class TorrcPage(QWizardPage):
         self.status_label.setText("Status: ")
         self.status_text.setFont(font_option)
 
-        Common.bridge_type_label.setText("Bridge type: ")
+        self.bridge_type_label.setText("Bridge type: ")
         self.bridge_text.setFont(font_option)
 
         self.proxy_type_label.setText("Proxy type: ")

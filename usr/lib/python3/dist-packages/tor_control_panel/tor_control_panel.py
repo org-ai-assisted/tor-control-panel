@@ -275,17 +275,17 @@ class TorControlPanel(QDialog):
         self.custom_bridges_layout.addWidget(self.custom_bridges)
         self.custom_bridges.setLineWrapMode(QTextEdit.NoWrap)
 
-        self.custom_buttons = QHBoxLayout(self.custom_bridges_frame)
+        self.custom_bridges_button_layout = QHBoxLayout()
         self.custom_cancel_button = QPushButton(QtGui.QIcon(
             self.back_icon), 'Cancel', self.custom_bridges_frame)
-        self.custom_cancel_button.clicked.connect(self.hide_custom_bridges)
+        self.custom_cancel_button.clicked.connect(self.close_custom_bridges)
         self.custom_accept_button = QPushButton(QtGui.QIcon(
             self.accept_icon), 'Accept', self.custom_bridges_frame)
         self.custom_accept_button.clicked.connect(self.accept_custom_bridges)
-        self.custom_buttons.addWidget(self.custom_cancel_button)
-        self.custom_buttons.addWidget(self.custom_accept_button)
-        self.custom_buttons.setAlignment(Qt.AlignRight)
-        self.custom_bridges_layout.addLayout(self.custom_buttons)
+        self.custom_bridges_button_layout.addWidget(self.custom_cancel_button)
+        self.custom_bridges_button_layout.addWidget(self.custom_accept_button)
+        self.custom_bridges_button_layout.setAlignment(Qt.AlignRight)
+        self.custom_bridges_layout.addLayout(self.custom_bridges_button_layout)
 
         self.control_tab_layout.addWidget(self.custom_bridges_frame)
 
@@ -536,7 +536,7 @@ class TorControlPanel(QDialog):
         self.bootstrap_thread.signal.connect(self.update_bootstrap)
         self.bootstrap_thread.start()
 
-    def hide_custom_bridges(self):
+    def close_custom_bridges(self):
         self.status.show()
         self.tor_message_browser.show()
         self.user_frame.show()
@@ -555,7 +555,7 @@ class TorControlPanel(QDialog):
              return
 
         else:
-            self.hide_custom_bridges()
+            self.close_custom_bridges()
             self.set_torrc()
 
     def check_valid_proxy_settings(self):
