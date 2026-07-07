@@ -582,8 +582,8 @@ class TorControlPanel(QDialog):
             self.proxy_user_edit.show()
             self.proxy_pwd_label.show()
             self.proxy_pwd_edit.show()
-            enable_auth = not proxy == 'SOCKS4' and 'Accept' in \
-                          self.configure_button.text()
+            enable_auth = (proxy != 'SOCKS4') and \
+                          ('Accept' in self.configure_button.text())
             self.proxy_user_edit.setEnabled(enable_auth)
             self.proxy_pwd_edit.setEnabled(enable_auth)
 
@@ -626,7 +626,7 @@ class TorControlPanel(QDialog):
 
                 ## Retrieve custom bridges
                 if os.path.exists(self.torrc_file_path):
-                    with open(self.torrc_file_path, 'r') as f:
+                    with open(self.torrc_file_path, 'r', encoding="utf-8") as f:
                         if '# Custom' in f.read():
                             self.custom_bridges.clear()
                             f.seek(0)
@@ -638,7 +638,7 @@ class TorControlPanel(QDialog):
                                     ## lines starting/ending with those letters.
                                     line = line[len('Bridge'):].strip()
                                     self.custom_bridges.append(line)
-                    f.close()
+                    ## 'f' is already closed by the with-block above.
                     self.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
 
                 self.custom_bridges_frame.show()

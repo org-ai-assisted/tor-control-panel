@@ -90,6 +90,17 @@ class TorBootstrap(QThread):
             count += 0.2
             time.sleep(0.2)
 
+        if not os.path.exists(self.control_socket_path):
+            ## The wait loop above timed out: the socket was never created
+            ## (Tor not running / not ready yet) -- distinct from a socket that
+            ## exists but is unreadable, which the next branch reports.
+            print(f"[ERROR] Control socket {self.control_socket_path} does not exist - Tor may not be running.")
+            bootstrap_phase = 'socket_error'
+            bootstrap_percent = 0
+            self.signal.emit(bootstrap_phase, bootstrap_percent)
+            time.sleep(10)
+            return None
+
         if not os.access(self.control_socket_path, os.R_OK):
             print(f"[ERROR] Cannot read control socket at {self.control_socket_path} - permission denied.")
             bootstrap_phase = 'socket_error'

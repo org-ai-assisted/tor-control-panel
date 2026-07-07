@@ -828,7 +828,7 @@ class AnonConnectionWizard(QWizard):
                     self.bootstrap_thread.start()
 
                 elif self.tor_status == 'cannot_connect':
-                    print('tor_status: ' + self.tor_status + self.tor_status_code, file=sys.stderr)
+                    print('tor_status: ' + self.tor_status + ' Error Code: ' + self.tor_status_code, file=sys.stderr)
                     self.tor_status_page.bootstrap_progress.hide()
                     self.tor_status_page.text.setText('<p><b>Tor failed to (re)start.</b></p> \
                         <p>Job for tor@default.service failed because the control process \
