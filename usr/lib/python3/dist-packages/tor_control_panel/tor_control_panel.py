@@ -110,10 +110,10 @@ class TorControlPanel(QDialog):
             .format('[error]')
 
         # Declared here (not where it is shown) so the message box is modal.
-        self.valid_custom_bridges = QMessageBox(QMessageBox.Warning, 'Warning',
+        self.invalid_custom_bridges_box = QMessageBox(QMessageBox.Warning, 'Warning',
                                                     info.invalid_custom_bridges(), QMessageBox.Ok)
 
-        self.valid_proxy = QMessageBox(QMessageBox.Warning, 'Warning',
+        self.invalid_proxy_box = QMessageBox(QMessageBox.Warning, 'Warning',
                                     info.invalid_ip_port(), QMessageBox.Ok)
 
         self.bootstrap_done = True
@@ -175,17 +175,17 @@ class TorControlPanel(QDialog):
         self.proxy_info_button = QPushButton(self.info_icon, '')
         self.proxy_info_button.clicked.connect(info.show_proxy_help)
 
-        self.config_frame_layout = QGridLayout()
-        self.config_frame_layout.addWidget(self.bridges_label, 0, 0)
-        self.config_frame_layout.addWidget(self.bridge_type, 0, 1)
-        self.config_frame_layout.addWidget(self.bridges_combo, 0, 1)
-        self.config_frame_layout.addWidget(self.bridge_info_button, 0, 2)
-        self.config_frame_layout.addWidget(self.proxy_label, 1, 0)
-        self.config_frame_layout.addWidget(self.proxy_type, 1, 1)
-        self.config_frame_layout.addWidget(self.proxy_combo, 1, 1)
-        self.config_frame_layout.addWidget(self.proxy_info_button, 1, 2)
-        self.config_frame_layout.setAlignment(Qt.AlignTop)
-        self.config_frame_layout.setVerticalSpacing(6)
+        self.config_layout = QGridLayout()
+        self.config_layout.addWidget(self.bridges_label, 0, 0)
+        self.config_layout.addWidget(self.bridge_type, 0, 1)
+        self.config_layout.addWidget(self.bridges_combo, 0, 1)
+        self.config_layout.addWidget(self.bridge_info_button, 0, 2)
+        self.config_layout.addWidget(self.proxy_label, 1, 0)
+        self.config_layout.addWidget(self.proxy_type, 1, 1)
+        self.config_layout.addWidget(self.proxy_combo, 1, 1)
+        self.config_layout.addWidget(self.proxy_info_button, 1, 2)
+        self.config_layout.setAlignment(Qt.AlignTop)
+        self.config_layout.setVerticalSpacing(6)
 
         self.proxy_ip_label = QLabel()
         self.proxy_ip_edit = QLineEdit()
@@ -213,7 +213,7 @@ class TorControlPanel(QDialog):
         self.proxy_settings_layout.setAlignment(Qt.AlignRight)
 
         self.config_layout = QVBoxLayout(self.config_group_box)
-        self.config_layout.addLayout(self.config_frame_layout)
+        self.config_layout.addLayout(self.config_layout)
         self.config_layout.addLayout(self.proxy_settings_layout)
 
         self.user_layout.addWidget(self.config_group_box)
@@ -544,8 +544,8 @@ class TorControlPanel(QDialog):
 
     def accept_custom_bridges(self):
         if not self.check_valid_custom_bridges():
-             self.valid_custom_bridges.setWindowModality(QtCore.Qt.WindowModal)
-             self.valid_custom_bridges.exec_()
+             self.invalid_custom_bridges_box.setWindowModality(QtCore.Qt.WindowModal)
+             self.invalid_custom_bridges_box.exec_()
              return
 
         else:
@@ -654,8 +654,8 @@ class TorControlPanel(QDialog):
                 if self.check_valid_proxy_settings():
                     self.use_proxy = True
                 else:
-                    self.valid_proxy.setWindowModality(QtCore.Qt.WindowModal)
-                    self.valid_proxy.exec_()
+                    self.invalid_proxy_box.setWindowModality(QtCore.Qt.WindowModal)
+                    self.invalid_proxy_box.exec_()
                     return
 
             else:

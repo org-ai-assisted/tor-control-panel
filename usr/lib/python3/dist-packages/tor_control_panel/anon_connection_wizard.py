@@ -172,7 +172,7 @@ class BridgeWizardPage(QWizardPage):
         self.steps = Common.wizard_steps
         self.bridges = Common.bridges
 
-        self.valid_custom_bridges = QMessageBox(QMessageBox.Warning, 'Warning',
+        self.invalid_custom_bridges_box = QMessageBox(QMessageBox.Warning, 'Warning',
                                                     info.invalid_custom_bridges(), QMessageBox.Ok)
 
         self.title_frame = QFrame()
@@ -328,8 +328,8 @@ class BridgeWizardPage(QWizardPage):
                 Common.custom_bridges = self.custom_bridges.toPlainText()
 
             if not self.check_valid_custom_bridges():
-                self.valid_custom_bridges.setWindowModality(Qt.WindowModal)
-                self.valid_custom_bridges.exec_()
+                self.invalid_custom_bridges_box.setWindowModality(Qt.WindowModal)
+                self.invalid_custom_bridges_box.exec_()
                 return self.steps.index('bridge_wizard_page')
             else:
                 return self.steps.index('proxy_wizard_page')
@@ -348,7 +348,7 @@ class ProxyWizardPage(QWizardPage):
 
         self.proxy_type = 'None'
 
-        self.valid_proxy = QMessageBox(QMessageBox.Warning, 'Warning',
+        self.invalid_proxy_box = QMessageBox(QMessageBox.Warning, 'Warning',
                                     info.invalid_ip_port(), QMessageBox.Ok)
 
         self.header_frame = QFrame()
@@ -361,7 +361,7 @@ class ProxyWizardPage(QWizardPage):
         self.proxy_frame = QFrame()
         self.proxy_layout = QGridLayout(self.proxy_frame)
 
-        self.label = QLabel()
+        self.proxy_settings_label = QLabel()
         self.proxy_help = QPushButton()
         self.proxytype_label = QLabel()
         self.proxy_combo = QComboBox()
@@ -376,7 +376,7 @@ class ProxyWizardPage(QWizardPage):
         self.password_edit = QLineEdit()
 
         self.proxy_help_layout = QGridLayout()
-        self.proxy_help_layout.addWidget(self.label, 1, 0)
+        self.proxy_help_layout.addWidget(self.proxy_settings_label, 1, 0)
         self.proxy_help_layout.addWidget(self.proxy_help, 1, 3)
         self.proxy_layout.addLayout(self.proxy_help_layout, 1, 0)
 
@@ -424,7 +424,7 @@ class ProxyWizardPage(QWizardPage):
 
         self.proxy_frame.hide()
         self.proxy_checkbox.toggled.connect(self.show_proxy_frame)
-        self.label.setText("Enter the proxy settings.")
+        self.proxy_settings_label.setText("Enter the proxy settings.")
 
         self.proxy_help.setText('Help ?')
         self.proxy_help.setMaximumWidth(75)
@@ -493,8 +493,8 @@ class ProxyWizardPage(QWizardPage):
             Common.proxy_password = self.password_edit.text()
 
             if not self.check_valid_proxy_settings():
-                self.valid_proxy.setWindowModality(Qt.WindowModal)
-                self.valid_proxy.exec_()
+                self.invalid_proxy_box.setWindowModality(Qt.WindowModal)
+                self.invalid_proxy_box.exec_()
                 return self.steps.index('proxy_wizard_page')
 
             else:
