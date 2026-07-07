@@ -54,19 +54,13 @@ def tor_status():
         print("tor_status status: tor_disabled")
         return "tor_disabled"
 
-'''Unlike tor_status() function which only shows the current state of the anon_connection_wizard.conf,
-set_enabled() and set_disabled() function will try to repair the missing torrc or DisableNetwork line.
-This makes sense because when we call set_enabled() or set_disabled() we really want Tor to work.
-
-set_enabled() will return a tuple with two value: a string of error type and an int of error code.
-'''
-
-'''set_enabled() is specified as follows:
-set_enabled() will:
-1. guarantee the existence of 40_tor_control_panel.conf
-2. guarantee the final value of DisableNetwork is 0 in the file
-3. guarantee Tor uses DisableNetwork 0
-'''
+## Unlike tor_status(), which only shows the current state of the torrc,
+## set_enabled() and set_disabled() also repair a missing torrc / DisableNetwork
+## line, since when they are called we really want Tor to work. set_enabled()
+## returns a (error-type string, error-code int) tuple.
+##
+## set_enabled() guarantees: the torrc exists, its final DisableNetwork value is
+## 0, and Tor uses DisableNetwork 0.
 def _write_disable_network(value):
     '''Rewrite the torrc so the DisableNetwork directive equals `value`.
 
@@ -111,12 +105,8 @@ def set_enabled():
 
     return 'tor_enabled', tor_status_code
 
-'''set_disabled() is specified as follows:
-set_disabled() will:
-1. guarantee the existence of 40_tor_control_panel.conf
-2. guarantee the final value of DisableNetwork is 1 in the file
-3. guarantee Tor uses DisableNetwork 1
-'''
+## set_disabled() guarantees: the torrc exists, its final DisableNetwork value
+## is 1, and Tor uses DisableNetwork 1.
 def set_disabled():
     _write_disable_network('1')
 

@@ -24,8 +24,6 @@ def signal_handler(sig, frame):
 class Common:
     translations_path = '/usr/share/anon-connection-wizard/translations.yaml'
 
-    dummy = ''
-
     torrc_file_path = torrc_gen.torrc_path()
     torrc_user_file_path = torrc_gen.user_path()
     acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
@@ -167,9 +165,9 @@ See next page for more details.''')
         return None
 
 
-class BridgesWizardPage(QWizardPage):
+class BridgeWizardPage(QWizardPage):
     def __init__(self):
-        super(BridgesWizardPage, self).__init__(None)
+        super(BridgeWizardPage, self).__init__(None)
 
         self.steps = Common.wizard_steps
         self.bridges = Common.bridges
@@ -643,7 +641,7 @@ class AnonConnectionWizard(QWizard):
         self.connection_main_page = ConnectionMainPage()
         self.addPage(self.connection_main_page)
 
-        self.bridge_wizard_page = BridgesWizardPage()
+        self.bridge_wizard_page = BridgeWizardPage()
         self.addPage(self.bridge_wizard_page)
 
         self.proxy_wizard_page = ProxyWizardPage()
