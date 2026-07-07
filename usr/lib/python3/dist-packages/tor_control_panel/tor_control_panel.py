@@ -238,7 +238,6 @@ class TorControlPanel(QDialog):
 
         self.logs_tab_layout = QVBoxLayout(self.logs_tab)
         self.view_layout = QHBoxLayout()
-        self.view_layout.setAlignment(Qt.AlignBottom)
 
         self.view_frame = QFrame()
         self.view_frame.setMinimumHeight(70)
@@ -248,13 +247,15 @@ class TorControlPanel(QDialog):
         self.view_layout.addWidget(self.view_frame)
         self.view_layout.addWidget(self.refresh_button)
 
+        ## Radio buttons are added to files_box_layout below, which reparents
+        ## them, so they need no explicit parent here.
         self.files_box_layout = QGridLayout(self.files_box)
-        self.torrc_button = QRadioButton(self.files_box)
-        self.log_button = QRadioButton(self.files_box)
-        self.journal_button = QRadioButton(self.files_box)
-        self.files_box_layout.addWidget(self.torrc_button, 1, 0)
-        self.files_box_layout.addWidget(self.log_button, 1, 1)
-        self.files_box_layout.addWidget(self.journal_button, 2, 1)
+        self.torrc_button = QRadioButton()
+        self.log_button = QRadioButton()
+        self.journal_button = QRadioButton()
+        self.files_box_layout.addWidget(self.torrc_button, 0, 0)
+        self.files_box_layout.addWidget(self.log_button, 0, 1)
+        self.files_box_layout.addWidget(self.journal_button, 1, 1)
 
         self.torrc_button.toggled.connect(self.refresh_logs)
         self.log_button.toggled.connect(self.refresh_logs)
