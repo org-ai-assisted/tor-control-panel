@@ -7,6 +7,8 @@ import os
 import subprocess
 import traceback
 
+from . import privilege
+
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix = True
 else:
@@ -18,9 +20,10 @@ def repair_torrc():
         return
 
     try:
-        result = subprocess.run(['leaprun', 'tor-config-sane'])
+        command = privilege.command('tor-config-sane')
+        result = subprocess.run(command)
         if result.returncode != 0:
-            print("ERROR: leaprun tor-config-sane exit code:", result.returncode)
+            print("ERROR:", ' '.join(command), "exit code:", result.returncode)
     except Exception:
         print("tor-config-sane unexpected error:")
         traceback.print_exc()

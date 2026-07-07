@@ -6,6 +6,8 @@
 import os, sys
 from subprocess import check_output, STDOUT, call, Popen, PIPE
 
+from . import privilege
+
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix = True
 else:
@@ -17,7 +19,7 @@ def edit_etc_resolv_conf_add():
       return
 
    try:
-      command = ['leaprun', 'anon-dns-add']
+      command = privilege.command('anon-dns-add')
       p = Popen(command, stdout=PIPE, stderr=PIPE)
       p.communicate()
    except Exception:
@@ -30,7 +32,7 @@ def edit_etc_resolv_conf_remove():
       return
 
    try:
-      command = ['leaprun', 'anon-dns-remove']
+      command = privilege.command('anon-dns-remove')
       p = Popen(command, stdout=PIPE, stderr=PIPE)
       p.communicate()
    except Exception:
