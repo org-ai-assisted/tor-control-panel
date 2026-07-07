@@ -108,8 +108,11 @@ def gen_torrc(args):
         proxy_password = str(args[6])
 
         if proxy_type in proxies and proxy_ip and proxy_port:
+            ## Bracket an IPv6 literal so the '<addr>:<port>' form stays
+            ## unambiguous (Tor's *Proxy directives accept [ipv6]:port).
+            proxy_addr = '[{0}]'.format(proxy_ip) if ':' in proxy_ip else proxy_ip
             torrc_content.append('{0} {1}:{2}\n'.format(proxy_torrc[proxies.index(proxy_type)],
-                                                        proxy_ip, proxy_port))
+                                                        proxy_addr, proxy_port))
             if proxy_username:
                 if proxy_type == proxies[0]:
                     torrc_content.append('{0} {1}:{2}\n'.format(proxy_auth[0], proxy_username,
@@ -173,8 +176,14 @@ def parse_torrc():
 
             if key in proxy_torrc:
                 proxy_type = proxies[proxy_torrc.index(key)]
-                if ':' in value:
-                    ip_port = value.split(':', 1)
+                if value.startswith('['):
+                    ## Bracketed IPv6 literal: [addr]:port
+                    end = value.rfind(']')
+                    proxy_ip = value[1:end] if end != -1 else value
+                    rest = value[end + 1:] if end != -1 else ''
+                    proxy_port = rest[1:] if rest.startswith(':') else ''
+                elif ':' in value:
+                    ip_port = value.rsplit(':', 1)
                     proxy_ip = ip_port[0]
                     proxy_port = ip_port[1] if len(ip_port) > 1 else ''
                 continue

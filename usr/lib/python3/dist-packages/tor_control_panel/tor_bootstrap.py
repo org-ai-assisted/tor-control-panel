@@ -160,7 +160,8 @@ class TorBootstrap(QThread):
             self.tor_controller.set_conf('DisableNetwork', '0')
             sys.stdout.write('Toggle DisableNetwork value to 0. Tor is now allowed to connect to the network.\n')
             sys.stdout.flush()
-            return
+            ## Do not return here: fall through and monitor the bootstrap so the
+            ## caller (e.g. the wizard status page) receives progress/completion.
 
         bootstrap_percent = 0
         while bootstrap_percent < 100:
