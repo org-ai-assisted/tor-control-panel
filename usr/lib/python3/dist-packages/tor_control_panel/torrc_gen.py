@@ -71,16 +71,26 @@ def gen_torrc(args):
 
     if not custom_bridges == 'None':
         print(f"DEBUG custom bridges / {custom_bridges}")
-        bridge = str(custom_bridges.split()[0]) #.lower()
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
-        ## Only emit a ClientTransportPlugin line when the first token is a
-        ## pluggable transport we know (obfs4/snowflake/meek); a plain/vanilla
-        ## bridge line would otherwise raise ValueError/IndexError here.
-        if bridge in bridges_type[:len(bridges_command)]:
-            torrc_content.append(bridges_command[bridges_type.index(bridge)])
-        bridge_custom_list = custom_bridges.split('\n')
-        for bridge in bridge_custom_list:
+        ## Emit the matching ClientTransportPlugin line for every pluggable
+        ## transport present in the custom bridges. A Bridge line's first token
+        ## is the transport name ('obfs4', 'snowflake', 'meek_lite'); a plain
+        ## vanilla bridge (IP:port first) needs no plugin. Lines may mix
+        ## transports, so scan them all and de-duplicate the plugin lines.
+        transport_plugins = {
+            'obfs4': bridges_command[0],
+            'snowflake': bridges_command[1],
+            'meek_lite': bridges_command[2],
+        }
+        emitted_plugins = set()
+        for bridge_line in custom_bridges.split('\n'):
+            tokens = bridge_line.split()
+            transport = tokens[0] if tokens else ''
+            if transport in transport_plugins and transport not in emitted_plugins:
+                torrc_content.append(transport_plugins[transport])
+                emitted_plugins.add(transport)
+        for bridge in custom_bridges.split('\n'):
             if bridge.strip():
                 torrc_content.append('Bridge {0}\n'.format(bridge))
     else:
