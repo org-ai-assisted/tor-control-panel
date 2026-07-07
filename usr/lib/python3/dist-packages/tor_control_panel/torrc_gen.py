@@ -59,7 +59,8 @@ def gen_torrc(args):
         if bridge_type in bridges_type:
             torrc_content.append(command_useBridges)
             torrc_content.append(bridges_command[bridges_type.index(bridge_type)])
-            bridges = json.loads(open(bridges_default_path).read())
+            with open(bridges_default_path, encoding="utf-8") as bridges_file:
+                bridges = json.loads(bridges_file.read())
             for bridge in bridges['bridges'][bridge_type]:
                 if bridge.strip():
                     torrc_content.append('{0}\n'.format(bridge))
@@ -139,7 +140,7 @@ def parse_torrc():
             if line.strip().startswith('#'):
                 continue
 
-            if line.startswith('Bridge'):
+            if line.strip().startswith('Bridge'):
                 line = line.split()
                 # The bridge name is 'meek_lite', the bridge type is 'meek'
                 if len(line) >= 2:

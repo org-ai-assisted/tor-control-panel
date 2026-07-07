@@ -710,10 +710,10 @@ class AnonConnectionWizard(QWizard):
                     f.seek(0)
                     lines = f.readlines()
                     for line in lines:
-                        if line.startswith('Bridge'):
+                        if line.strip().startswith('Bridge'):
                             ## Drop the 'Bridge' prefix and the surrounding
                             ## whitespace (including the space after 'Bridge').
-                            line = line[len('Bridge'):].strip()
+                            line = line.strip()[len('Bridge'):].strip()
                             self.bridge_wizard_page.custom_bridges.append(line)
             self.bridge_wizard_page.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
 
