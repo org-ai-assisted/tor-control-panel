@@ -121,8 +121,8 @@ class TorControlPanel(QDialog):
 
         self.tabs = QTabWidget()
         self.control_tab = QWidget()
-        self.utils_tab = QWidget()
         self.logs_tab = QWidget()
+        self.utils_tab = QWidget()
 
         self.button_layout = QHBoxLayout()
         self.quit_button = QPushButton(self.exit_icon, ' Exit')
@@ -236,7 +236,7 @@ class TorControlPanel(QDialog):
         self.control_tab_layout.addWidget(self.info_frame)
         self.control_tab_layout.addWidget(self.user_frame)
 
-        self.utils_tab_layout = QVBoxLayout(self.utils_tab)
+        self.logs_tab_layout = QVBoxLayout(self.logs_tab)
         self.view_layout = QHBoxLayout()
         self.view_layout.setAlignment(Qt.AlignBottom)
 
@@ -264,8 +264,8 @@ class TorControlPanel(QDialog):
         self.file_browser = QTextBrowser()
         self.file_browser.setLineWrapMode(QTextBrowser.NoWrap)
 
-        self.utils_tab_layout.addLayout(self.view_layout)
-        self.utils_tab_layout.addWidget(self.file_browser)
+        self.logs_tab_layout.addLayout(self.view_layout)
+        self.logs_tab_layout.addWidget(self.file_browser)
 
         self.custom_bridges_frame = QFrame(self.control_tab)
         self.custom_bridges_layout = QVBoxLayout(self.custom_bridges_frame)
@@ -289,7 +289,7 @@ class TorControlPanel(QDialog):
 
         self.control_tab_layout.addWidget(self.custom_bridges_frame)
 
-        self.utils_layout = QtWidgets.QVBoxLayout(self.logs_tab)
+        self.utils_tab_layout = QtWidgets.QVBoxLayout(self.utils_tab)
 
         self.onioncircuits_box = QFrame()
         self.onions_layout = QVBoxLayout(self.onioncircuits_box)
@@ -310,10 +310,10 @@ class TorControlPanel(QDialog):
         self.dummy1 = QFrame()
         self.dummy2 = QFrame()
 
-        self.utils_layout.addWidget(self.onioncircuits_box)
-        self.utils_layout.addWidget(self.newnym_box)
-        self.utils_layout.addWidget(self.dummy1)
-        self.utils_layout.addWidget(self.dummy2)
+        self.utils_tab_layout.addWidget(self.onioncircuits_box)
+        self.utils_tab_layout.addWidget(self.newnym_box)
+        self.utils_tab_layout.addWidget(self.dummy1)
+        self.utils_tab_layout.addWidget(self.dummy2)
 
         self.newnym_box.setFrameShape(QFrame.Panel | QFrame.Raised)
         self.onioncircuits_box.setFrameShape(QFrame.Panel | QFrame.Raised)
@@ -322,8 +322,8 @@ class TorControlPanel(QDialog):
 
     def setup_ui(self):
         self.tabs.addTab(self.control_tab, 'Control')
-        self.tabs.addTab(self.logs_tab, 'Utilities')
-        self.tabs.addTab(self.utils_tab, 'Logs')
+        self.tabs.addTab(self.utils_tab, 'Utilities')
+        self.tabs.addTab(self.logs_tab, 'Logs')
 
         self.quit_button.setIconSize(QtCore.QSize(20, 20))
 
@@ -468,16 +468,15 @@ class TorControlPanel(QDialog):
         self.bootstrap_progress.show()
         self.bootstrap_progress.setValue(bootstrap_percent)
         self.bootstrap_done = False
+        self.message = bootstrap_phase
 
         if bootstrap_percent == 100:
-            self.message = bootstrap_phase
             self.bootstrap_progress.hide()
             self.restart_button.setEnabled(True)
             self.stop_button.setEnabled(True)
             self.refresh(False)
             self.bootstrap_done = True
         else:
-            self.message = bootstrap_phase
             self.tor_status = 'acquiring'
             self.refresh_status()
 
@@ -573,7 +572,7 @@ class TorControlPanel(QDialog):
             self.proxy_user_edit.hide()
             self.proxy_pwd_label.hide()
             self.proxy_pwd_edit.hide()
-        elif proxy != 'None':
+        else:
             self.proxy_ip_label.show()
             self.proxy_ip_edit.show()
             self.proxy_port_label.show()
@@ -741,8 +740,11 @@ class TorControlPanel(QDialog):
                 # warnings and errors, write to file for text browser.
                 elif button.text() == self.log_source_names[1]:
                     if os.path.exists(self.tor_log):
-                        lines = os.popen('tail -n 3000 %s' % self.tor_log).read()
-                        lines = lines.split('\n')
+                        ## Last 3000 lines of the Tor log, read directly rather
+                        ## than shelling out to 'tail'.
+                        with open(self.tor_log, 'r', encoding="utf-8",
+                                  errors='replace') as flog:
+                            lines = flog.read().split('\n')[-3000:]
                         with open(self.tor_log_html, 'w') as fw:
                             for line in lines:
                                 ## Tor log lines are untrusted and are embedded
@@ -796,14 +798,14 @@ class TorControlPanel(QDialog):
 
         self.proxy_type.setText(args[1])
         if self.proxy_type.text() != 'None':
+            ## proxy_type was just set to args[1], so it is not 'None' here.
             self.use_proxy = True
             index = self.proxy_combo.findText(args[1])
             self.proxy_combo.setCurrentIndex(index)
-            if args[1] != 'None':
-                self.proxy_ip_edit.setText(args[2])
-                self.proxy_port_edit.setText(args[3])
-                self.proxy_user_edit.setText(args[4])
-                self.proxy_pwd_edit.setText(args[5])
+            self.proxy_ip_edit.setText(args[2])
+            self.proxy_port_edit.setText(args[3])
+            self.proxy_user_edit.setText(args[4])
+            self.proxy_pwd_edit.setText(args[5])
         else:
             self.use_proxy = False
 
