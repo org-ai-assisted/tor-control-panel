@@ -109,7 +109,6 @@ class TorControlPanel(QDialog):
         self.quit_button = QPushButton(self.exit_icon, ' Exit')
         self.quit_button.clicked.connect(self.quit)
 
-        self.button_box = QFrame()
         self.button_layout.addWidget(self.quit_button)
         self.button_layout.setAlignment(Qt.AlignRight)
 
@@ -206,7 +205,6 @@ class TorControlPanel(QDialog):
                                           self.control_box)
         self.stop_button = QPushButton(self.stop_icon, ' Stop Tor',
                                        self.control_box)
-        self.stop_button.clicked.connect(self.stop_tor)
         self.configure_button = QPushButton(self.tool_icon, ' Configure',
                                             self.control_box)
 
