@@ -14,7 +14,7 @@ from PyQt5.QtGui import QCursor, QTextCursor
 from guimessages.translations import _translations
 from sanitize_string.sanitize_string_lib import sanitize_string
 
-from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info, validators
+from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info, info_gui, validators
 from .tor_status import cat, write_to_temp_then_move
 
 
@@ -264,7 +264,7 @@ class BridgeWizardPage(QWizardPage):
         self.show_help_censorship.setEnabled(True)
         self.show_help_censorship.setText('&Help ?')
         self.show_help_censorship.setMaximumWidth(75)
-        self.show_help_censorship.clicked.connect(info.show_help_censorship)
+        self.show_help_censorship.clicked.connect(info_gui.show_help_censorship)
 
         self.bridges_label.setText('Select a bridge type:')
 
@@ -272,7 +272,7 @@ class BridgeWizardPage(QWizardPage):
         self.custom_label.setText('Enter at least 2 bridge relays (one per line).')
 
         self.custom_bridges_help.setText('&How to get Bridges?')
-        self.custom_bridges_help.clicked.connect(info.custom_bridges_help)
+        self.custom_bridges_help.clicked.connect(info_gui.custom_bridges_help)
 
         self.custom_bridges.setLineWrapMode(QTextEdit.NoWrap)
 
@@ -423,7 +423,7 @@ class ProxyWizardPage(QWizardPage):
 
         self.proxy_help.setText('Help ?')
         self.proxy_help.setMaximumWidth(75)
-        self.proxy_help.clicked.connect(info.show_proxy_help)
+        self.proxy_help.clicked.connect(info_gui.show_proxy_help)
 
         self.proxytype_label.setText("Proxy type: ")
 

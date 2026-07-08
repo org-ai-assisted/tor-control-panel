@@ -18,7 +18,7 @@ import glob
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
-from . import tor_status, tor_bootstrap, torrc_gen, info, validators, privilege
+from . import tor_status, tor_bootstrap, torrc_gen, info, info_gui, validators, privilege
 
 
 class CommandThread(QtCore.QThread):
@@ -147,7 +147,7 @@ class TorControlPanel(QDialog):
         self.bridges_combo.insertSeparator(7)
         self.bridges_combo.addItem('Disable network')
         self.bridge_info_button = QPushButton(self.info_icon, '')
-        self.bridge_info_button.clicked.connect(info.show_help_censorship)
+        self.bridge_info_button.clicked.connect(info_gui.show_help_censorship)
 
         self.proxy_heading_label = QLabel()
         self.proxy_type = QLabel()
@@ -159,7 +159,7 @@ class TorControlPanel(QDialog):
             lambda: self.update_proxy_settings(self.proxy_combo.currentText()))
 
         self.proxy_info_button = QPushButton(self.info_icon, '')
-        self.proxy_info_button.clicked.connect(info.show_proxy_help)
+        self.proxy_info_button.clicked.connect(info_gui.show_proxy_help)
 
         self.config_grid_layout = QGridLayout()
         self.config_grid_layout.addWidget(self.bridges_heading_label, 0, 0)
