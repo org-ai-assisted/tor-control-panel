@@ -23,7 +23,10 @@ def valid_ip(address):
         ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
         socket.getaddrinfo(address, None)
         return True
-    except OSError:
+    except (OSError, UnicodeError):
+        ## OSError: not resolvable. UnicodeError: getaddrinfo's IDNA encoder
+        ## raises (not OSError) on e.g. an over-long hostname label -- a hostile
+        ## proxy/bridge host must be rejected, not crash the validator.
         return False
 
 
