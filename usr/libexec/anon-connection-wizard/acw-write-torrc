@@ -15,7 +15,19 @@ true "$0: START"
 ## Paths default to the real locations; the tests override them (via the
 ## environment) to run against a throwaway root.
 [ -v acw_comm_file_path ] || acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
-[ -v torrc_file_path ] || torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+[ -v whonix_marker ] || whonix_marker='/usr/share/anon-gw-base-files/gateway'
+## Distro-aware drop-in path (must match tor_status.torrc_file_path). Derived
+## from the Whonix marker rather than passed in, because the privilege
+## escalators (leaprun/pkexec/sudo) do not forward the environment. On plain
+## Debian the drop-in must live under /etc/tor (AppArmor system_tor forbids
+## /usr/local); on Whonix it is /usr/local/etc/torrc.d.
+if [ ! -v torrc_file_path ]; then
+   if [ -e "$whonix_marker" ]; then
+      torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+   else
+      torrc_file_path='/etc/tor/torrc.d/40_tor_control_panel.conf'
+   fi
+fi
 torrc_dir="$(dirname -- "$torrc_file_path")"
 
 ## Refuse a symlink source. The spool directory is world-writable, so without

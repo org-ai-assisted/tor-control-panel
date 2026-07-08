@@ -5,14 +5,20 @@
 
 ## AI-Assisted
 
-## Make Tor's configuration "sane" so tor-control-panel's drop-in at
-## /usr/local/etc/torrc.d/40_tor_control_panel.conf is actually read, and so a
-## control socket exists -- on BOTH Whonix and plain Debian / Kicksecure.
+## Make Tor's configuration "sane" so tor-control-panel's drop-in is actually
+## read, and so a control socket exists -- on BOTH Whonix and plain Debian /
+## Kicksecure.
 ##
-## On Whonix the anon-gw-anonymizer-config package already chains the %include
-## and sets the control socket, so here only the drop-in directory is ensured.
-## On plain Debian, Tor's stock /etc/tor/torrc has no %include (Debian bug
-## #866187) and no control socket, so both are added.
+## The drop-in directory is distro-dependent because Tor is confined to reading
+## its config from specific locations:
+##   * Whonix: /usr/local/etc/torrc.d (the anon-gw-anonymizer-config package
+##     already chains the %include and sets the control socket, so here only the
+##     drop-in directory is ensured).
+##   * plain Debian: /etc/tor/torrc.d. Tor's AppArmor profile (system_tor) lets
+##     it read /etc/tor/** but NOT /usr/local/**, so the drop-in MUST live under
+##     /etc/tor or tor@default fails to start. Stock /etc/tor/torrc has no
+##     %include (Debian bug #866187), so it is added here. The control socket is
+##     already provided by Tor's tor-service-defaults-torrc and is NOT added.
 
 set -o errexit
 set -o nounset
@@ -23,9 +29,18 @@ shopt -s shift_verbose
 
 ## Paths default to the real locations; the tests override them (via the
 ## environment) to run against a throwaway root.
-[ -v torrc_dir ] || torrc_dir='/usr/local/etc/torrc.d'
 [ -v main_torrc ] || main_torrc='/etc/tor/torrc'
 [ -v whonix_marker ] || whonix_marker='/usr/share/anon-gw-base-files/gateway'
+## Distro-aware drop-in directory (must match tor_status.torrc_dir). On Whonix
+## Tor reads /usr/local/etc/torrc.d; on plain Debian the AppArmor system_tor
+## profile only permits /etc/tor/**, so the drop-in must live there.
+if [ ! -v torrc_dir ]; then
+   if [ -e "$whonix_marker" ]; then
+      torrc_dir='/usr/local/etc/torrc.d'
+   else
+      torrc_dir='/etc/tor/torrc.d'
+   fi
+fi
 include_line="%include ${torrc_dir}/*.conf"
 socket_conf="${torrc_dir}/30_tor_control_panel_socket.conf"
 
@@ -60,15 +75,19 @@ if ! grep --quiet --extended-regexp \
    printf '%s\n' "${include_line}" >> "${main_torrc}"
 fi
 
-## Provide a control socket so tor-control-panel can talk to Tor (bootstrap
-## progress, NEWNYM, stop / status). Kept in a dedicated drop-in that gen_torrc
-## does not overwrite.
-if [ ! -e "${socket_conf}" ]; then
-   printf '%s\n%s\n' \
-      'ControlSocket /run/tor/control' \
-      'CookieAuthentication 1' \
-      > "${socket_conf}"
-   chmod -- 0644 "${socket_conf}"
+## Do NOT configure a ControlSocket on plain Debian / Kicksecure. Tor's own
+## /usr/share/tor/tor-service-defaults-torrc already provides a working control
+## channel:
+##   ControlSocket /run/tor/control GroupWritable RelaxDirModeCheck
+##   ControlSocketsGroupWritable 1
+##   CookieAuthentication 1 / CookieAuthFileGroupReadable 1
+## A second, bare 'ControlSocket /run/tor/control' fails Tor's directory
+## permission check (the service creates /run/tor as mode 02755) and stops Tor
+## from starting. Remove any such drop-in an older tor-control-panel wrote.
+## (The tor-control-panel user must be in the 'debian-tor' group to reach the
+## group-accessible socket and cookie.)
+if [ -e "${socket_conf}" ]; then
+   rm --force --verbose -- "${socket_conf}"
 fi
 
 true "$0: END"

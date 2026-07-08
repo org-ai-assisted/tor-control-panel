@@ -12,14 +12,23 @@ if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
 else:
     whonix = False
 
-## The torrc drop-in lives in /usr/local/etc/torrc.d on EVERY distro (the
-## single definition; torrc_gen imports these). On Whonix this is where the
-## anon-gw config already %includes; on plain Debian / Kicksecure tor-config-sane
-## makes Tor read it (adds the %include; stock /etc/tor/torrc has none, Debian
-## bug #866187). Using one path everywhere keeps the Python and the privileged
-## bash helpers (tor-config-sane, which adds the %include, and acw-write-torrc,
-## which stages the drop-in) in agreement instead of split-brained.
-torrc_dir = '/usr/local/etc/torrc.d'
+## The torrc drop-in directory is distro-dependent -- and it MUST be, because
+## Tor is confined and can only read its config from certain locations:
+##   * Whonix: /usr/local/etc/torrc.d -- where the anon-gw config already
+##     chains the %include and Tor is permitted to read.
+##   * plain Debian / Kicksecure: /etc/tor/torrc.d -- Debian ships an AppArmor
+##     profile (system_tor) that lets Tor read /etc/tor/** but NOT
+##     /usr/local/**, so a drop-in under /usr/local makes tor@default fail to
+##     start ("Error reading included configuration file or directory"). Do NOT
+##     unify these onto /usr/local: it is AppArmor-unreadable on Debian.
+## tor-config-sane adds the matching %include (stock /etc/tor/torrc has none;
+## Debian bug #866187). The privileged bash helpers (tor-config-sane,
+## acw-write-torrc) derive the same distro-aware path from the Whonix marker,
+## since the escalators (leaprun/pkexec/sudo) do not forward this value.
+if whonix:
+    torrc_dir = '/usr/local/etc/torrc.d'
+else:
+    torrc_dir = '/etc/tor/torrc.d'
 torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
 torrc_user_file_path = torrc_dir + '/50_user.conf'
 acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
