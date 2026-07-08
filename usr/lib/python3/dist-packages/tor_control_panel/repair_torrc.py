@@ -7,14 +7,11 @@ import subprocess
 import traceback
 
 from . import privilege
-## Single source of the Whonix-gateway check (defined in tor_status).
-from .tor_status import whonix
 
 def repair_torrc():
-    if not whonix:
-        ## Not implemented for non-Whonix yet.
-        return
-
+    ## tor-config-sane is distro-agnostic: on plain Debian it adds the %include
+    ## and control socket, on Whonix it just ensures the drop-in directory. So
+    ## it must run on every distro, not only Whonix.
     try:
         command = privilege.command('tor-config-sane')
         result = subprocess.run(command)

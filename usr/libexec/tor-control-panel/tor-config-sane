@@ -50,9 +50,12 @@ fi
 
 ## Ensure the main torrc %includes the drop-in directory, so Tor reads it. Match
 ## an active '%include' directive (first token, not a comment) that references
-## the directory; add it only when absent.
+## the directory; add it only when absent. Escape regex metacharacters in the
+## path (e.g. the '.' in 'torrc.d') so it is matched literally, not as "any
+## character".
+torrc_dir_escaped="$(printf '%s' "${torrc_dir}" | sed 's/[].^$*+?()[{}|]/\\&/g')"
 if ! grep --quiet --extended-regexp \
-      "^[[:space:]]*%include[[:space:]]+${torrc_dir}(/|[[:space:]]|\$)" \
+      "^[[:space:]]*%include[[:space:]]+${torrc_dir_escaped}(/|[[:space:]]|\$)" \
       -- "${main_torrc}"; then
    printf '%s\n' "${include_line}" >> "${main_torrc}"
 fi

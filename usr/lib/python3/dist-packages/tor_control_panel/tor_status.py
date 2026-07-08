@@ -17,7 +17,8 @@ else:
 ## anon-gw config already %includes; on plain Debian / Kicksecure tor-config-sane
 ## makes Tor read it (adds the %include; stock /etc/tor/torrc has none, Debian
 ## bug #866187). Using one path everywhere keeps the Python and the privileged
-## bash helpers (acw-write-torrc) in agreement instead of split-brained.
+## bash helpers (tor-config-sane, which adds the %include, and acw-write-torrc,
+## which stages the drop-in) in agreement instead of split-brained.
 torrc_dir = '/usr/local/etc/torrc.d'
 torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
 torrc_user_file_path = torrc_dir + '/50_user.conf'

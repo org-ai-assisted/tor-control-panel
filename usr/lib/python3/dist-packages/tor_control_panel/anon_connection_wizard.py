@@ -14,7 +14,7 @@ from PyQt5.QtGui import QCursor, QTextCursor
 from guimessages.translations import _translations
 from sanitize_string.sanitize_string_lib import sanitize_string
 
-from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info, info_gui, validators
+from . import tor_status, privilege, tor_bootstrap, torrc_gen, info, info_gui, validators
 from .tor_status import cat, write_to_temp_then_move
 
 
@@ -612,16 +612,16 @@ class AnonConnectionWizard(QWizard):
     def __init__(self):
         super(AnonConnectionWizard, self).__init__()
 
-        """
-        Rationalize code.
-        If torrc_file_path does not exist, write a torrc template at the start of the app.
-        Therefore repair_torrc.py in no longer needed, as well as tor_config_sane
-        Since we are confident that a torrc file exists,  we can avoid all the
-        " if os.path.exists(self.torrc_file_path):" in the whole package.
-        """
-        if os.path.exists(Common.torrc_file_path):
-            pass
-        else:
+        ## Make sure the torrc drop-in directory exists and that Tor actually
+        ## reads it (on plain Debian this adds the %include and a control socket;
+        ## on Whonix the drop-in dir is ensured). Same call TorControlPanel makes;
+        ## without it the wizard could write a config Tor never includes.
+        ## Dispatched through the privilege runner (leaprun / pkexec / sudo).
+        privilege.run('tor-config-sane')
+
+        ## Guarantee a torrc drop-in exists so the rest of the package can read it
+        ## unconditionally.
+        if not os.path.exists(Common.torrc_file_path):
             args = ['None', 'None', 'None']
             torrc_gen.gen_torrc(args)
 

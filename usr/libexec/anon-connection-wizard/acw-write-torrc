@@ -3,13 +3,20 @@
 ## Copyright (C) 2023 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-set -x
-set -e
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
 true "$0: START"
 
-acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
-torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+## Paths default to the real locations; the tests override them (via the
+## environment) to run against a throwaway root.
+[ -v acw_comm_file_path ] || acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
+[ -v torrc_file_path ] || torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+torrc_dir="$(dirname -- "$torrc_file_path")"
 
 if ! test -f "$acw_comm_file_path" ; then
   echo "$0: file '$acw_comm_file_path' is not a file!" >&2
@@ -21,7 +28,7 @@ if ! test -r "$acw_comm_file_path" ; then
   exit 1
 fi
 
-mkdir --parents --verbose -- '/usr/local/etc/torrc.d'
+mkdir --parents --verbose -- "$torrc_dir"
 
 contents="$(cat -- "$acw_comm_file_path")"
 ## Sanity test.

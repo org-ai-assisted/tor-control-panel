@@ -47,9 +47,9 @@ _ACTION_COMMANDS = {
     'tor-control-panel-read-tor-default-log':
         ['/usr/libexec/tor-control-panel/tcp-read-tor-log'],
     'anon-dns-add':
-        ['/usr/libexec/tor-control-panel/tcp-dns', 'add'],
+        ['/usr/bin/anon-dns', 'add'],
     'anon-dns-remove':
-        ['/usr/libexec/tor-control-panel/tcp-dns', 'remove'],
+        ['/usr/bin/anon-dns', 'remove'],
 }
 
 
@@ -63,13 +63,19 @@ def leaprun_available():
     return shutil.which('leaprun') is not None
 
 
-def _passwordless_sudo_available():
-    """True if sudo can run a command without prompting for a password."""
+def _passwordless_sudo_available(mapped_command):
+    """True if sudo can run exactly `mapped_command` without a password prompt.
+
+    Probes the real helper via `sudo --non-interactive --list -- <cmd>`, NOT a
+    generic `true`: a sudoers rule scoped with NOPASSWD to the helper path would
+    still require a password for `true`, so probing `true` would wrongly disable
+    an available sudo fallback.
+    """
     if shutil.which('sudo') is None:
         return False
     try:
         return subprocess.call(
-            ['sudo', '--non-interactive', 'true'],
+            ['sudo', '--non-interactive', '--list', '--'] + list(mapped_command),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
     except OSError:
         return False
@@ -93,8 +99,9 @@ def command(action, *args):
         return ['leaprun', action, *args]
     if shutil.which('pkexec') is not None:
         return ['pkexec'] + _mapped_command(action, args)
-    if _passwordless_sudo_available():
-        return ['sudo', '--non-interactive'] + _mapped_command(action, args)
+    mapped = _mapped_command(action, args)
+    if _passwordless_sudo_available(mapped):
+        return ['sudo', '--non-interactive'] + mapped
     raise NoPrivilegeMethod(
         'no privilege escalation available for {0!r}: need privleap (leaprun), '
         'pkexec, or passwordless sudo'.format(action))
