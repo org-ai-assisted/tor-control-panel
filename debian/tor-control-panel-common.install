@@ -18,5 +18,6 @@ usr/lib/tmpfiles.d/anon-connection-wizard.conf
 
 usr/libexec/anon-connection-wizard/acw-tor-control
 usr/libexec/anon-connection-wizard/acw-write-torrc
+usr/libexec/tor-control-panel/tor-config-sane
 
 usr/share/anon-connection-wizard/bridges_default

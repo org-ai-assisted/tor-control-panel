@@ -1,0 +1,71 @@
+#!/bin/bash
+
+## Copyright (C) 2025 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## AI-Assisted
+
+## Make Tor's configuration "sane" so tor-control-panel's drop-in at
+## /usr/local/etc/torrc.d/40_tor_control_panel.conf is actually read, and so a
+## control socket exists -- on BOTH Whonix and plain Debian / Kicksecure.
+##
+## On Whonix the anon-gw-anonymizer-config package already chains the %include
+## and sets the control socket, so here only the drop-in directory is ensured.
+## On plain Debian, Tor's stock /etc/tor/torrc has no %include (Debian bug
+## #866187) and no control socket, so both are added.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
+
+## Paths default to the real locations; the tests override them (via the
+## environment) to run against a throwaway root.
+[ -v torrc_dir ] || torrc_dir='/usr/local/etc/torrc.d'
+[ -v main_torrc ] || main_torrc='/etc/tor/torrc'
+[ -v whonix_marker ] || whonix_marker='/usr/share/anon-gw-base-files/gateway'
+include_line="%include ${torrc_dir}/*.conf"
+socket_conf="${torrc_dir}/30_tor_control_panel_socket.conf"
+
+## The drop-in directory must exist on every distro.
+install --directory --mode=0755 -- "${torrc_dir}"
+
+## Whonix: the anon-gw config already handles the %include chain and the control
+## socket, so nothing further is required here.
+if [ -e "${whonix_marker}" ]; then
+   true "$0: Whonix detected; drop-in directory ensured, nothing else to do."
+   exit 0
+fi
+
+## Plain Debian / Kicksecure below.
+
+## Ensure the main torrc exists (Tor is started with '-f /etc/tor/torrc').
+if [ ! -e "${main_torrc}" ]; then
+   main_torrc_dir="$(dirname -- "${main_torrc}")"
+   install --directory --mode=0755 -- "${main_torrc_dir}"
+   install --mode=0644 -- /dev/null "${main_torrc}"
+fi
+
+## Ensure the main torrc %includes the drop-in directory, so Tor reads it. Match
+## an active '%include' directive (first token, not a comment) that references
+## the directory; add it only when absent.
+if ! grep --quiet --extended-regexp \
+      "^[[:space:]]*%include[[:space:]]+${torrc_dir}(/|[[:space:]]|\$)" \
+      -- "${main_torrc}"; then
+   printf '%s\n' "${include_line}" >> "${main_torrc}"
+fi
+
+## Provide a control socket so tor-control-panel can talk to Tor (bootstrap
+## progress, NEWNYM, stop / status). Kept in a dedicated drop-in that gen_torrc
+## does not overwrite.
+if [ ! -e "${socket_conf}" ]; then
+   printf '%s\n%s\n' \
+      'ControlSocket /run/tor/control' \
+      'CookieAuthentication 1' \
+      > "${socket_conf}"
+   chmod -- 0644 "${socket_conf}"
+fi
+
+true "$0: END"
