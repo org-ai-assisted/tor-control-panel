@@ -26,6 +26,7 @@ acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
 
 def tor_status():
+    """Return 'tor_enabled' or 'tor_disabled' from the torrc DisableNetwork setting."""
     def tor_enabled_check():
         ## Match the DisableNetwork directive itself (first token on a
         ## non-comment line), not any substring -- a commented-out or partial
@@ -36,8 +37,8 @@ def tor_status():
         ## than crashing.
         if not os.path.exists(torrc_file_path):
             return True
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
-            for line in f:
+        with open(torrc_file_path, 'r', encoding="utf-8") as torrc_file:
+            for line in torrc_file:
                 stripped = line.strip()
                 if stripped.startswith('#'):
                     continue
@@ -74,8 +75,8 @@ def _write_disable_network(value):
     ## / set_disabled() are documented to repair a missing torrc, so treat an
     ## absent file as empty and create it rather than raising FileNotFoundError.
     if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
-            lines = f.read().split('\n')
+        with open(torrc_file_path, 'r', encoding="utf-8") as torrc_file:
+            lines = torrc_file.read().split('\n')
     else:
         lines = []
 
@@ -132,6 +133,7 @@ def write_to_temp_then_move(content):
     privilege.check_run('acw-write-torrc')
 
 def cat(filename):
+    """Print the contents of `filename` (debug helper)."""
     print(f"cat filename: '{filename}'")
     if not os.path.exists(filename):
         print(f"File did not exist: '{filename}'")

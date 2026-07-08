@@ -723,8 +723,8 @@ class TorControlPanel(QDialog):
             ## Dispatch on the button identity, not its label text, so a wording
             ## change to a radio cannot silently break log selection.
             if button is self.journal_button:
-                p = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
-                stdout, stderr = p.communicate()
+                journal_proc = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
+                stdout, stderr = journal_proc.communicate()
                 ## Journal content is untrusted; decode defensively (a
                 ## malformed byte must not crash the log view) then strip
                 ## control characters, escape sequences and markup.
@@ -737,8 +737,8 @@ class TorControlPanel(QDialog):
                     ## Last 3000 lines of the Tor log, read directly rather
                     ## than shelling out to 'tail'.
                     with open(self.tor_log, 'r', encoding="utf-8",
-                              errors='replace') as flog:
-                        lines = flog.read().split('\n')[-3000:]
+                              errors='replace') as tor_log_file:
+                        lines = tor_log_file.read().split('\n')[-3000:]
                     html_lines = []
                     for line in lines:
                         ## Tor log lines are untrusted and are embedded into
@@ -769,9 +769,9 @@ class TorControlPanel(QDialog):
                 ## On plain Debian / Kicksecure the drop-in may not exist yet;
                 ## show a note instead of crashing with FileNotFoundError.
                 if os.path.exists(torrc_path):
-                    with open(torrc_path, encoding="utf-8") as f:
+                    with open(torrc_path, encoding="utf-8") as torrc_file:
                         ## torrc may contain user-supplied content; sanitize.
-                        text = sanitize_string(f.read())
+                        text = sanitize_string(torrc_file.read())
                 else:
                     text = 'No tor-control-panel torrc exists yet.'
 
@@ -864,7 +864,8 @@ class TorControlPanel(QDialog):
         self.stop_tor()
         self.restart_button.setEnabled(False)
 
-        p = Popen(privilege.command('acw-tor-control-restart'))
+        ## Fire-and-forget: bootstrap tracking below reflects the restart.
+        Popen(privilege.command('acw-tor-control-restart'))
         self.start_bootstrap()
 
     def stop_tor(self):
@@ -872,8 +873,8 @@ class TorControlPanel(QDialog):
         if not self.bootstrap_done:
             self.bootstrap_progress.hide()
             self.stop_bootstrap_thread()
-        p = Popen(privilege.command('acw-tor-control-stop'))
-        p.wait()
+        stop_proc = Popen(privilege.command('acw-tor-control-stop'))
+        stop_proc.wait()
         self.refresh(True)
 
     def quit(self):

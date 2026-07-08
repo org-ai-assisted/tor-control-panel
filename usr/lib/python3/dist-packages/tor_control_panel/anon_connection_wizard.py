@@ -674,7 +674,7 @@ class AnonConnectionWizard(QWizard):
 
         Common.use_default_bridges = Common.bridge_type in Common.default_bridges
         Common.use_custom_bridges = Common.bridge_type == 'Custom bridges'
-        Common.use_proxy = not Common.proxy_type == 'None'
+        Common.use_proxy = Common.proxy_type != 'None'
 
         if Common.use_custom_bridges:
             ## Retrieve custom bridges (sanitized; shared with TorControlPanel).
@@ -733,9 +733,9 @@ class AnonConnectionWizard(QWizard):
 
         if bootstrap_phase == 'no_controller':
             self.bootstrap_thread.terminate()
-            buttonReply = QMessageBox.warning(self, 'Tor Controller Not Constructed', 'Tor controller \
+            button_reply = QMessageBox.warning(self, 'Tor Controller Not Constructed', 'Tor controller \
                                               cannot be constructed.')
-            if buttonReply == QMessageBox.Ok:
+            if button_reply == QMessageBox.Ok:
                 sys.exit(1)
 
         elif bootstrap_phase == 'cookie_authentication_failed':
@@ -744,11 +744,11 @@ class AnonConnectionWizard(QWizard):
             ## branch above does) so the dialog is actually shown and the return
             ## value is a StandardButton to compare against; constructing a
             ## QMessageBox without exec_() showed nothing and never matched Ok.
-            buttonReply = QMessageBox.warning(self, 'Tor Controller Authentication Failed',
+            button_reply = QMessageBox.warning(self, 'Tor Controller Authentication Failed',
                                               'Tor allows for authentication by reading a cookie '
                                               'file, but we cannot read that file (probably due to '
                                               'permissions).')
-            if buttonReply == QMessageBox.Ok:
+            if button_reply == QMessageBox.Ok:
                 sys.exit(1)
 
     def next_button_clicked(self):
@@ -797,7 +797,6 @@ class AnonConnectionWizard(QWizard):
 
             '''Arranging different tor_status_page according to the value of disable_tor.'''
             if not Common.disable_tor:
-                # if os.path.exists(Common.torrc_file_path):
                 ## Move the tmp file to the real .conf only when user
                 ## clicks the connect button. This may overwrite the
                 ## previous .conf, but it does not matter.
@@ -909,8 +908,8 @@ class AnonConnectionWizard(QWizard):
 
     def finish_button_clicked(self):
         # The True indicates the acw has finished successfully
-        # TODO: this does not work as expected; even when the cancel button is clicked,
-        # the wizard still return True
+        # TODO: this does not work as expected; even when the cancel button is
+        # clicked, the wizard still returns True.
         return True
 
     def show_finish_button(self):

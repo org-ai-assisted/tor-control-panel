@@ -35,7 +35,6 @@ class TorBootstrap(QThread):
         self.control_cookie_path = '/run/tor/control.authcookie'
         self.control_socket_path = '/run/tor/control'
         self.previous_status = ''
-        #self.is_running = False
         '''The TAG to phase mapping is mainly according to:
         https://gitweb.torproject.org/tor-launcher.git/tree/src/chrome/locale/en/torlauncher.properties
         '''
@@ -71,23 +70,27 @@ class TorBootstrap(QThread):
                     'done': 'Connected to the Tor network!'}
 
     def connect_to_control_port(self):
+        """Connect and authenticate to Tor's control socket.
+
+        Return a stem Controller on success, or None (after emitting the
+        relevant failure phase) if the socket is missing/unreadable or
+        authentication fails.
+        """
         import stem
         import stem.control
         import stem.socket
         from stem.connection import connect
 
-        '''Step 1: Construct a Tor controller'''
-        # In case something wrong happened when trying to start Tor,
-        # causing /run/tor/control never be generated.
-        # We set up a time counter and hardcode the wait time limitation as 10s.
-
+        ## Step 1: construct a Tor controller. If starting Tor went wrong,
+        ## /run/tor/control may never be created, so wait for it for at most
+        ## ~5 seconds (25 * 0.2s) before giving up.
         bootstrap_phase = 'Constructing Tor Controller...'
         bootstrap_percent = 0
         self.signal.emit(bootstrap_phase, bootstrap_percent)
 
-        count=0
-        while not os.path.exists(self.control_socket_path) and count < 5:
-            count += 0.2
+        waited_seconds = 0
+        while not os.path.exists(self.control_socket_path) and waited_seconds < 5:
+            waited_seconds += 0.2
             time.sleep(0.2)
 
         if not os.path.exists(self.control_socket_path):
@@ -133,7 +136,7 @@ class TorBootstrap(QThread):
         try:
             tor_controller.authenticate(self.control_cookie_path)
         except stem.connection.IncorrectCookieSize:
-            return None  #if # TODO: the cookie file's size is wrong
+            return None  # TODO: the cookie file's size is wrong
         except stem.connection.UnreadableCookieFile:
             # TODO: can we let Tor generate a cookie to fix this situation?
             print('Tor allows for authentication by reading it a cookie file, \
@@ -144,20 +147,21 @@ class TorBootstrap(QThread):
             time.sleep(10)
             return None
         except stem.connection.CookieAuthRejected:
-            return None  #if cookie authentication is attempted but the socket doesn't accept it
+            return None  # cookie authentication attempted but the socket does not accept it
         except stem.connection.IncorrectCookieValue:
-            return None  #if the cookie file's value is rejected
-        except:
+            return None  # the cookie file's value is rejected
+        except Exception:
             return None
 
         return tor_controller
 
     def run(self):
+        """Thread body: connect to Tor, drive bootstrap, emit (phase, percent)."""
         self.tor_controller = self.connect_to_control_port()
-        '''if DisableNetwork is 1, then toggle it to 0
-        because we really want Tor connect to the network'''
+        ## If DisableNetwork is 1, toggle it to 0 -- we want Tor to connect to
+        ## the network.
 
-        if self.tor_controller == None:
+        if self.tor_controller is None:
             sys.stdout.write('Controller connection failed.\n')
             sys.stdout.flush()
             ## Return (end this QThread's run) rather than sys.exit(): an

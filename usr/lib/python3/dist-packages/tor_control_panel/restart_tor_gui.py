@@ -24,9 +24,9 @@ class RestartTor(QWidget):
         self.bootstrap_progress = QProgressBar(self)
         self.layout = QGridLayout()
 
-        self.setupUI()
+        self.setup_ui()
 
-    def setupUI(self):
+    def setup_ui(self):
         ## Size only; the window is positioned by center() once shown, so a
         ## hardcoded x/y here would just be overridden.
         self.resize(450, 150)
