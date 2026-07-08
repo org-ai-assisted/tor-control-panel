@@ -33,9 +33,9 @@ target_user=''
 
 ## pkexec / sudo: the caller's uid is in the environment.
 if [ -n "${PKEXEC_UID:-}" ]; then
-   target_user="$(getent passwd "${PKEXEC_UID}" | cut -d ':' -f 1)"
+   target_user="$(getent passwd "${PKEXEC_UID}" | cut --delimiter=':' --fields=1)"
 elif [ -n "${SUDO_UID:-}" ]; then
-   target_user="$(getent passwd "${SUDO_UID}" | cut -d ':' -f 1)"
+   target_user="$(getent passwd "${SUDO_UID}" | cut --delimiter=':' --fields=1)"
 fi
 
 ## privleap / anything else: use the active graphical login session's user.
@@ -56,14 +56,14 @@ if [ -z "$target_user" ] || [ "$target_user" = 'root' ]; then
 fi
 
 if [ -z "$target_user" ]; then
-   echo "$0: could not auto-detect the desktop account to add to debian-tor" >&2
+   printf '%s\n' "$0: could not auto-detect the desktop account to add to debian-tor" >&2
    exit 1
 fi
 
 ## Only ever add an existing, regular (non-system) account.
 target_uid="$(id --user -- "$target_user" 2>/dev/null || true)"
 if [ -z "$target_uid" ] || [ "$target_uid" -lt 1000 ]; then
-   echo "$0: refusing to add '$target_user' (not a regular user account)" >&2
+   printf '%s\n' "$0: refusing to add '$target_user' (not a regular user account)" >&2
    exit 1
 fi
 

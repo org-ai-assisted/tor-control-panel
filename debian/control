@@ -17,6 +17,7 @@ Package: tor-control-panel-common
 Architecture: all
 Depends: helper-scripts,
          python3,
+         safe-rm,
          ${misc:Depends}
 Recommends: privleap | tor-control-panel-pkexec
 Description: Tor control panel - GUI-independent config logic and helpers

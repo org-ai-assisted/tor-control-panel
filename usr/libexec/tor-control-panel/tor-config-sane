@@ -87,7 +87,7 @@ fi
 ## (The tor-control-panel user must be in the 'debian-tor' group to reach the
 ## group-accessible socket and cookie.)
 if [ -e "${socket_conf}" ]; then
-   rm --force --verbose -- "${socket_conf}"
+   safe-rm --force --verbose -- "${socket_conf}"
 fi
 
 true "$0: END"
