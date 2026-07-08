@@ -216,3 +216,15 @@ def user_torrc_text():
 ############################################
 '''
     return text.strip()
+
+def bootstrap_done_text(bootstrap_phase):
+    '''Progress message shown when Tor has finished bootstrapping. Shared by the
+    restart-tor-gui popup and the wizard's status page so the wording stays in
+    one place.'''
+    return ('<p><b>Tor bootstrapping done</b></p>Bootstrap phase: {0}'
+            .format(bootstrap_phase))
+
+def bootstrapping_text(bootstrap_phase):
+    '''Progress message shown while Tor is still bootstrapping (shared).'''
+    return ('<p><b>Bootstrapping Tor...</b></p>Bootstrap phase: {0}'
+            .format(bootstrap_phase))

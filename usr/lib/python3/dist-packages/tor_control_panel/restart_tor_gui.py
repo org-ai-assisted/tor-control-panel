@@ -65,10 +65,10 @@ class RestartTor(QWidget):
 
         if bootstrap_percent == 100:
             self.bootstrap_progress.setValue(100)
-            self.text.setText('<p><b>Tor bootstrapping done</b></p>Bootstrap phase: {0}'.format(bootstrap_phase))
+            self.text.setText(info.bootstrap_done_text(bootstrap_phase))
         else:
             self.bootstrap_progress.setValue(bootstrap_percent)
-            self.text.setText('<p><b>Bootstrapping Tor...</b></p>Bootstrap phase: {0}'.format(bootstrap_phase))
+            self.text.setText(info.bootstrapping_text(bootstrap_phase))
 
     def closeEvent(self, event):
         QtCore.QTimer.singleShot(2000, QApplication.instance().quit)

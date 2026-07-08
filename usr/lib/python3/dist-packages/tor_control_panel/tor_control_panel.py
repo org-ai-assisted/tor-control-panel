@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QCursor, QTextCursor
 from PyQt5.QtWidgets import *
 
-from subprocess import call, Popen, PIPE
+from subprocess import Popen, PIPE
 
 import os
 import glob
@@ -446,15 +446,23 @@ class TorControlPanel(QDialog):
         try:
             with Controller.from_socket_file('/run/tor/control') as controller:
                 controller.authenticate()
+                ## controller.signal() is synchronous: it returns only after
+                ## Tor's '250 OK', so the NEWNYM has already been accepted here.
+                ## Do NOT restart Tor afterwards -- a restart would tear down the
+                ## very circuits NEWNYM just requested (and drop every existing
+                ## connection), which defeats a lightweight 'new circuit' request
+                ## (arraybolt3 review: "do we know Tor processed NEWNYM before we
+                ## restart?" -- yes, and restarting negates it).
                 controller.signal(Signal.NEWNYM)
-                self.restart_tor()
-
+        except stem.SocketError:
+            print('NEWNYM: cannot connect to the Tor control socket')
         except stem.UnsatisfiableRequest:
-            print('signal NEWNYM  failed to be processed')
+            print('NEWNYM: signal failed to be processed')
 
     def onioncircuits(self):
-        command = 'onioncircuits &'
-        call(command, shell=True)
+        ## Launch the separate Onion Circuits viewer; Popen does not wait, so it
+        ## runs alongside the panel without a shell or a trailing '&'.
+        Popen(['onioncircuits'])
 
     def update_bootstrap(self, bootstrap_phase, bootstrap_percent):
         self.bootstrap_progress.show()

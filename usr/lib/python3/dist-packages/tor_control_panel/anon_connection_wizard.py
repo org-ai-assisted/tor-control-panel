@@ -723,13 +723,13 @@ class AnonConnectionWizard(QWizard):
     def update_bootstrap(self, bootstrap_phase, bootstrap_percent):
         self.tor_status_page.bootstrap_progress.setValue(bootstrap_percent)
         if bootstrap_percent == 100:
-            self.tor_status_page.text.setText('<p><b>Tor bootstrapping done</b></p>Bootstrap phase: {0}'
-                                              .format(bootstrap_phase))
+            self.tor_status_page.text.setText(
+                info.bootstrap_done_text(bootstrap_phase))
             self.bootstrap_done = True
             self.show_finish_button()
         else:
-            self.tor_status_page.text.setText('<p><b>Bootstrapping Tor...</b></p>Bootstrap phase: {0}'
-                                              .format(bootstrap_phase))
+            self.tor_status_page.text.setText(
+                info.bootstrapping_text(bootstrap_phase))
 
         if bootstrap_phase == 'no_controller':
             self.bootstrap_thread.terminate()
