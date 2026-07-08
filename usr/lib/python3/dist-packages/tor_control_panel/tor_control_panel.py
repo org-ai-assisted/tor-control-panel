@@ -439,12 +439,27 @@ class TorControlPanel(QDialog):
         self.refresh_button.setFlat(True)
 
     def newnym(self):
+        import socket
         import stem
         from stem import Signal
         from stem.control import Controller
 
+        control_socket_path = '/run/tor/control'
+
+        ## Pre-flight the connection with our own socket (closed by the context
+        ## manager either way). stem's from_socket_file leaks the underlying fd
+        ## when the connect fails -- ControlSocketFile._make_socket() creates the
+        ## socket, and if connect() raises the socket is never closed -- so only
+        ## hand the path to stem once we know a connection succeeds.
         try:
-            with Controller.from_socket_file('/run/tor/control') as controller:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                probe.connect(control_socket_path)
+        except OSError:
+            print('NEWNYM: cannot connect to the Tor control socket')
+            return
+
+        try:
+            with Controller.from_socket_file(control_socket_path) as controller:
                 controller.authenticate()
                 ## controller.signal() is synchronous: it returns only after
                 ## Tor's '250 OK', so the NEWNYM has already been accepted here.
