@@ -12,6 +12,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QCursor, QTextCursor
 from guimessages.translations import _translations
+from sanitize_string.sanitize_string_lib import sanitize_string
 
 from . import tor_status, repair_torrc, tor_bootstrap, torrc_gen, info, validators
 from .tor_status import cat, write_to_temp_then_move
@@ -30,9 +31,7 @@ class Common:
 
     bridges_default_path = '/usr/share/anon-connection-wizard/bridges_default'
 
-    default_bridges = ['obfs4',
-                       'snowflake',
-                       'meek']
+    default_bridges = torrc_gen.default_bridge_types
 
     bridges = torrc_gen.bridge_types
 
@@ -314,9 +313,7 @@ class BridgeWizardPage(QWizardPage):
                 Common.bridge_type = self.bridges_combo.currentText()
 
     def check_valid_custom_bridges(self):
-        bridges = Common.custom_bridges
-        return (bridges.startswith('obfs4')
-                or (('.' in bridges) and (':' in bridges)))
+        return validators.valid_custom_bridges(Common.custom_bridges)
 
     def nextId(self):
         if not Common.use_custom_bridges:
@@ -341,10 +338,8 @@ class ProxyWizardPage(QWizardPage):
 
         self.steps = Common.wizard_steps
 
-        self.proxies = ['None',
-                        'HTTP / HTTPS',
-                        'SOCKS4',
-                        'SOCKS5']
+        ## Prefixed with 'None'; the rest from torrc_gen's canonical list.
+        self.proxies = ['None'] + torrc_gen.proxies
 
         self.proxy_type = 'None'
 
@@ -682,20 +677,15 @@ class AnonConnectionWizard(QWizard):
         Common.use_proxy = not Common.proxy_type == 'None'
 
         if Common.use_custom_bridges:
-        # Retrieve custom bridges
-            # if os.path.exists(Common.torrc_file_path):
-            with open(Common.torrc_file_path, 'r', encoding="utf-8") as f:
-                if '# Custom' in f.read():
-                    self.bridge_wizard_page.custom_bridges.clear()
-                    f.seek(0)
-                    lines = f.readlines()
-                    for line in lines:
-                        if line.strip().startswith('Bridge'):
-                            ## Drop the 'Bridge' prefix and the surrounding
-                            ## whitespace (including the space after 'Bridge').
-                            line = line.strip()[len('Bridge'):].strip()
-                            self.bridge_wizard_page.custom_bridges.append(line)
-            self.bridge_wizard_page.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
+            ## Retrieve custom bridges (sanitized; shared with TorControlPanel).
+            bridge_lines = torrc_gen.read_custom_bridge_lines(
+                Common.torrc_file_path)
+            if bridge_lines:
+                self.bridge_wizard_page.custom_bridges.clear()
+                for line in bridge_lines:
+                    self.bridge_wizard_page.custom_bridges.append(line)
+                self.bridge_wizard_page.custom_bridges.moveCursor(
+                    QtGui.QTextCursor.Start)
 
         if Common.use_default_bridges or Common.use_custom_bridges:
                 self.bridge_wizard_page.bridges_checkbox.setChecked(True)
@@ -782,7 +772,9 @@ class AnonConnectionWizard(QWizard):
                     self.torrc_page.bridge_text.setText(Common.bridge_type)
 
                 with open(Common.torrc_file_path, encoding="utf-8") as torrc_file:
-                    torrc_text = torrc_file.read()
+                    ## torrc contents are untrusted; strip control/markup before
+                    ## showing them, matching TorControlPanel's torrc log view.
+                    torrc_text = sanitize_string(torrc_file.read())
                 self.torrc_page.torrc_text.setPlainText(torrc_text)
 
             if not Common.use_proxy:

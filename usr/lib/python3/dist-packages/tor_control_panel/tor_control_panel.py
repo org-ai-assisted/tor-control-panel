@@ -76,21 +76,12 @@ class TorControlPanel(QDialog):
 
         self.journal_command = privilege.command('tor-control-panel-read-tor-default-log')
 
-        self.bridges = ['None',
-                        'obfs4',
-                        'snowflake',
-                        'meek',
-                        'Custom bridges']
-
-        self.default_bridges = ['None',
-                                'obfs4',
-                                'snowflake',
-                                'meek']
-
-        self.proxies = ['None',
-                        'HTTP / HTTPS',
-                        'SOCKS4',
-                        'SOCKS5']
+        ## Built from torrc_gen's canonical lists (prefixed with 'None') so the
+        ## bridge/proxy type strings cannot drift out of sync with what
+        ## gen_torrc()/parse_torrc() expect.
+        self.bridges = ['None'] + torrc_gen.bridge_types
+        self.default_bridges = ['None'] + torrc_gen.default_bridge_types
+        self.proxies = ['None'] + torrc_gen.proxies
 
         self.use_default_bridges = False
         self.use_custom_bridges = False
@@ -545,9 +536,7 @@ class TorControlPanel(QDialog):
         self.exit_configuration()
 
     def check_valid_custom_bridges(self):
-        bridges = self.custom_bridges.toPlainText()
-        return (bridges.startswith('obfs4')
-                or (('.' in bridges) and (':' in bridges)))
+        return validators.valid_custom_bridges(self.custom_bridges.toPlainText())
 
     def accept_custom_bridges(self):
         if not self.check_valid_custom_bridges():
@@ -624,21 +613,13 @@ class TorControlPanel(QDialog):
                 self.tor_message_browser.hide()
                 self.user_frame.hide()
 
-                ## Retrieve custom bridges
-                if os.path.exists(self.torrc_file_path):
-                    with open(self.torrc_file_path, 'r', encoding="utf-8") as f:
-                        if '# Custom' in f.read():
-                            self.custom_bridges.clear()
-                            f.seek(0)
-                            lines = f.readlines()
-                            for line in lines:
-                                if line.startswith('Bridge'):
-                                    ## Remove the 'Bridge' prefix; str.strip()
-                                    ## takes a character SET, so it would mangle
-                                    ## lines starting/ending with those letters.
-                                    line = line[len('Bridge'):].strip()
-                                    self.custom_bridges.append(line)
-                    ## 'f' is already closed by the with-block above.
+                ## Retrieve custom bridges (sanitized; shared with the wizard).
+                bridge_lines = torrc_gen.read_custom_bridge_lines(
+                    self.torrc_file_path)
+                if bridge_lines:
+                    self.custom_bridges.clear()
+                    for line in bridge_lines:
+                        self.custom_bridges.append(line)
                     self.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
 
                 self.custom_bridges_frame.show()

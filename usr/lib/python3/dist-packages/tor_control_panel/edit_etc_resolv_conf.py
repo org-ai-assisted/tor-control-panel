@@ -7,11 +7,8 @@ import os, sys
 from subprocess import check_output, STDOUT, call, Popen, PIPE
 
 from . import privilege
-
-if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
-    whonix = True
-else:
-    whonix = False
+## Single source of the Whonix-gateway check (defined in tor_status).
+from .tor_status import whonix
 
 def edit_etc_resolv_conf_add():
    if not whonix:

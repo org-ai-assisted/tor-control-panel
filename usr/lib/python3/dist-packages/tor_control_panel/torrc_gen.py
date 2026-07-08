@@ -6,6 +6,8 @@
 import json
 from pathlib import Path
 
+from sanitize_string.sanitize_string_lib import sanitize_string
+
 from . import info
 from .edit_etc_resolv_conf import edit_etc_resolv_conf_add
 ## The distro-aware drop-in path is defined once, in tor_status; import it here
@@ -27,6 +29,12 @@ bridge_types = ['obfs4',
                 'snowflake',
                 'meek',
                 'Custom bridges']
+
+## The bridge types that ship default bridges (i.e. everything but the
+## user-supplied 'Custom bridges'); the canonical source for both GUIs.
+default_bridge_types = ['obfs4',
+                        'snowflake',
+                        'meek']
 
 proxy_torrc = ['HTTPSProxy',
                'Socks4Proxy',
@@ -76,6 +84,33 @@ def main_torrc_includes_dropin(main_torrc_text):
             if torrc_dir in parts[1]:
                 return True
     return False
+
+def read_custom_bridge_lines(torrc_file):
+    '''Return the user's custom Bridge lines from `torrc_file` (the
+    '# Custom bridges are used' block), with the leading 'Bridge ' stripped and
+    each line sanitized.
+
+    Shared by both GUIs' "retrieve custom bridges" step. The torrc is untrusted
+    (the lines are user-pasted, round-trip through the file, and could be
+    tampered with) and they are appended into a rich-text QTextEdit, so strip
+    markup / control characters first -- the same treatment refresh_logs already
+    gives the torrc it displays.
+    '''
+    path = Path(torrc_file)
+    if not path.exists():
+        return []
+    contents = path.read_text(encoding="utf-8")
+    if '# Custom' not in contents:
+        return []
+    bridge_lines = []
+    for line in contents.split('\n'):
+        stripped = line.strip()
+        if stripped.startswith('Bridge'):
+            ## Drop the 'Bridge' prefix (slice, not str.strip which takes a
+            ## character SET) and the surrounding whitespace, then sanitize.
+            bridge_lines.append(
+                sanitize_string(stripped[len('Bridge'):].strip()))
+    return bridge_lines
 
 def gen_torrc(args):
     bridge_type = str(args[0]) if len(args) > 0 else 'None'

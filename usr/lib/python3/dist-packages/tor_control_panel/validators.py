@@ -28,3 +28,9 @@ def valid_port(port):
         return 1 <= int(port) <= 65535
     except (ValueError, TypeError):
         return False
+
+
+def valid_custom_bridges(text):
+    """True if `text` looks like pasted custom bridges: an obfs4 line, or a
+    plain address:port (contains both '.' and ':'). Shared by both GUIs."""
+    return text.startswith('obfs4') or (('.' in text) and (':' in text))
