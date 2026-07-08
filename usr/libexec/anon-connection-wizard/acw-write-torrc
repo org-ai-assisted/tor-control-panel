@@ -18,6 +18,17 @@ true "$0: START"
 [ -v torrc_file_path ] || torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
 torrc_dir="$(dirname -- "$torrc_file_path")"
 
+## Refuse a symlink source. The spool directory is world-writable, so without
+## this a local user could point tor.conf at a root-only file (e.g. /etc/shadow)
+## and have this root helper copy its content into the world-readable drop-in.
+## The directory's sticky bit plus fs.protected_symlinks already stops root from
+## following such a symlink; this is defence in depth for a system on which that
+## kernel hardening was disabled.
+if test -h "$acw_comm_file_path" ; then
+  echo "$0: file '$acw_comm_file_path' is a symlink; refusing!" >&2
+  exit 1
+fi
+
 if ! test -f "$acw_comm_file_path" ; then
   echo "$0: file '$acw_comm_file_path' is not a file!" >&2
   exit 1
@@ -37,17 +48,15 @@ if [ "$contents" = "" ]; then
   exit 1
 fi
 
-## Do not move the original file, as the creator may have set a lock on it,
-## which could interfere with other users of the file. Copy and delete the
-## original instead.
-cp --verbose -- "$acw_comm_file_path" "$torrc_file_path"
+## Write the already-read content to the drop-in rather than re-reading the
+## source with cp. A single read closes the TOCTOU window between validating the
+## source and copying it, and never dereferences the source a second time. The
+## destination directory is root-owned and not world-writable, so the target
+## cannot be a planted symlink.
+printf '%s\n' "$contents" > "$torrc_file_path"
 
-## Disabled for debugging. And not important either.
-#safe-rm -- "$acw_comm_file_path"
-
-## We set 40_tor_control_panel.conf to chmod 644
-## so that only root can write and read, others can only read,
-## which prevents the edit by normal user.
+## Set 40_tor_control_panel.conf to 0644: root writes, everyone reads, no normal
+## user can edit it.
 chmod --verbose 644 -- "$torrc_file_path"
 
 true "$0: END"
