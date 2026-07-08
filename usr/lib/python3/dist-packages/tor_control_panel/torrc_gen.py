@@ -14,7 +14,7 @@ from .edit_etc_resolv_conf import edit_etc_resolv_conf_add
 ## rather than recomputing it, so the two modules can never disagree on where
 ## the torrc lives (forum post #154: torrc.d is the sustainable target, and the
 ## GUI -- unlike the package -- may write Tor's config directly).
-from .tor_status import (write_to_temp_then_move, whonix, torrc_dir,
+from .tor_status import (write_to_temp_then_move, torrc_dir,
                          torrc_file_path, torrc_user_file_path)
 
 bridges_default_path = '/usr/share/anon-connection-wizard/bridges_default'

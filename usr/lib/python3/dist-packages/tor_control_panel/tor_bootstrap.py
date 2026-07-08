@@ -4,7 +4,6 @@
 ## See the file COPYING for copying conditions.
 
 import sys
-import signal
 
 import os
 import time
@@ -79,7 +78,6 @@ class TorBootstrap(QThread):
         import stem
         import stem.control
         import stem.socket
-        from stem.connection import connect
 
         ## Step 1: construct a Tor controller. If starting Tor went wrong,
         ## /run/tor/control may never be created, so wait for it for at most
@@ -217,6 +215,8 @@ class TorBootstrap(QThread):
 
 def main():
     app = QApplication(sys.argv)
-    thread = TorBootstrap()
+    ## TorBootstrap requires a parent QObject; None is a valid parentless
+    ## QThread (the GUI callers pass their widget).
+    thread = TorBootstrap(None)
     thread.start()
     app.exec_()

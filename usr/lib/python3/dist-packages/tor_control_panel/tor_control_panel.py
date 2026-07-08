@@ -8,13 +8,11 @@ import signal
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QCursor, QTextCursor
 from PyQt5.QtWidgets import *
 
 from subprocess import Popen, PIPE
 
 import os
-import glob
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
@@ -675,7 +673,6 @@ class TorControlPanel(QDialog):
             self.update_proxy_settings(proxy)
 
         elif 'Accept' in self.configure_button.text():
-            bridge = self.bridges_combo.currentText()
             if self.bridges_combo.currentText() in self.default_bridges:
                 self.use_default_bridges = True
                 self.use_custom_bridges = False

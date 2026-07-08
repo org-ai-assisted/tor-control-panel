@@ -7,10 +7,9 @@ import os
 import signal
 import sys
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QCursor, QTextCursor
 from guimessages.translations import _translations
 from sanitize_string.sanitize_string_lib import sanitize_string
 
@@ -893,6 +892,8 @@ class AnonConnectionWizard(QWizard):
                     tor_status.set_disabled()
 
         except AttributeError:
+            ## self.bootstrap_thread was never created (no bootstrap started on
+            ## this page yet); nothing to tear down or restore.
             pass
 
         self.bootstrap_done = False
