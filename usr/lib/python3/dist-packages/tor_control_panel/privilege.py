@@ -46,9 +46,9 @@ _ACTION_COMMANDS = {
         ['/usr/libexec/tor-control-panel/tor-config-sane'],
     'tor-control-panel-read-tor-default-log':
         ['/usr/libexec/tor-control-panel/tcp-read-tor-log'],
-    ## Whonix-Gateway only: anon-dns (from anon-gw-anonymizer-config) points
-    ## /etc/resolv.conf at the Tor DNS. Never invoked on plain Debian, where DNS
-    ## is assumed already configured (see edit_etc_resolv_conf).
+    ## Whonix-Gateway only: anon-dns (from anon-gw-anonymizer-config) configures
+    ## Whonix-Gateway system DNS. Never invoked on plain Debian, where DNS is
+    ## assumed already configured (see edit_etc_resolv_conf).
     'anon-dns-add':
         ['/usr/bin/anon-dns', 'add'],
     'anon-dns-remove':

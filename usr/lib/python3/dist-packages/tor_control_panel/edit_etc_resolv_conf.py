@@ -4,13 +4,13 @@
 ## See the file COPYING for copying conditions.
 
 """
-Point /etc/resolv.conf at the Tor DNS -- a Whonix-Gateway-only concern.
+Configure Whonix-Gateway system DNS -- a Whonix-Gateway-only concern.
 
-On a Whonix-Gateway the box itself must resolve names through Tor's DNSPort
-(via the Qubes/qemu primary DNS), so the privileged anon-dns helper rewrites
-/etc/resolv.conf accordingly. On plain Debian / Kicksecure the system resolver
-is assumed to already be configured and working, and tor-control-panel does not
-touch DNS -- so both functions are deliberate no-ops off Whonix.
+The privileged anon-dns helper adjusts /etc/resolv.conf on a Whonix-Gateway; see
+https://www.whonix.org/wiki/Whonix-Gateway_System_DNS
+
+On plain Debian / Kicksecure the system resolver is assumed already configured,
+so both functions are deliberate no-ops off Whonix.
 """
 
 import sys
