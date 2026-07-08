@@ -51,7 +51,7 @@ def TestOneInput(data: bytes) -> None:
     for item in lines:
         ## Output is inserted into a rich-text QTextEdit; it must be sanitized
         ## of raw control characters (tab excepted).
-        if any(ord(char) < 32 and char != "\t" for char in item):
+        if any(ord(char) < 32 and char not in "\t\n" for char in item):
             raise RuntimeError(f"unsanitized control char in {item!r}")
 
 

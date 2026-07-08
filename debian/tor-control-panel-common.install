@@ -9,6 +9,7 @@ usr/lib/python3/dist-packages/tor_control_panel/__init__.py
 usr/lib/python3/dist-packages/tor_control_panel/info.py
 usr/lib/python3/dist-packages/tor_control_panel/torrc_gen.py
 usr/lib/python3/dist-packages/tor_control_panel/tor_status.py
+usr/lib/python3/dist-packages/tor_control_panel/tor_bootstrap_parse.py
 usr/lib/python3/dist-packages/tor_control_panel/validators.py
 usr/lib/python3/dist-packages/tor_control_panel/privilege.py
 usr/lib/python3/dist-packages/tor_control_panel/edit_etc_resolv_conf.py

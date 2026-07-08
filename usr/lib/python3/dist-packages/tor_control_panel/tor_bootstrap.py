@@ -7,10 +7,10 @@ import sys
 import signal
 
 import os
-import re
 import time
 
 from sanitize_string.sanitize_string_lib import sanitize_string
+from .tor_bootstrap_parse import parse_bootstrap_phase
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication
@@ -181,7 +181,6 @@ class TorBootstrap(QThread):
 
         bootstrap_percent = 0
         while bootstrap_percent < 100:
-            bootstrap_phase = ''
             try:
                 bootstrap_status = self.tor_controller.get_info("status/bootstrap-phase")
             except stem.ControllerError:
@@ -195,33 +194,16 @@ class TorBootstrap(QThread):
                 return
 
             if bootstrap_status != self.previous_status:
-                progress_match = re.match('.* PROGRESS=([0-9]+).*', bootstrap_status)
-                tag_match = re.search(r'TAG=(.*) +SUMMARY', bootstrap_status)
-                if not (progress_match and tag_match):
+                ## TAG= keyword drives the phase, per
+                ## https://gitweb.torproject.org/tor-launcher.git/plain/README-BOOTSTRAP
+                parsed = parse_bootstrap_phase(bootstrap_status, self.tag_phase)
+                if parsed is None:
                     ## Unexpected status line: record it and skip, rather than
                     ## crashing the bootstrap thread on a None .group() call.
                     self.previous_status = bootstrap_status
                     time.sleep(0.2)
                     continue
-                bootstrap_percent = int(progress_match.group(1))
-                bootstrap_tag = tag_match.group(1)
-                ''' Use TAG= keyword for bootstrap_phase, according to:
-                https://gitweb.torproject.org/tor-launcher.git/plain/README-BOOTSTRAP
-                '''
-                if bootstrap_tag in self.tag_phase:
-                    bootstrap_phase = self.tag_phase[bootstrap_tag]
-                else:
-                    ## Unknown / newer tag: fall back to Tor's own human-readable
-                    ## SUMMARY (sanitized, since it is untrusted) rather than a
-                    ## generic placeholder, so e.g. proxy phases still read well.
-                    summary_match = re.search(r'SUMMARY="([^"]*)"', bootstrap_status)
-                    if summary_match:
-                        bootstrap_phase = sanitize_string(summary_match.group(1))
-                    else:
-                        bootstrap_phase = 'Connecting to the Tor network...'
-                    sys.stdout.write('Unknown Bootstrap TAG: %s\n'
-                                     % sanitize_string(bootstrap_tag))
-                    sys.stdout.flush()
+                bootstrap_phase, bootstrap_percent = parsed
                 ## bootstrap_status is untrusted Tor output; sanitize before
                 ## writing it to the terminal.
                 sys.stdout.write('{0}\n'.format(sanitize_string(bootstrap_status)))
