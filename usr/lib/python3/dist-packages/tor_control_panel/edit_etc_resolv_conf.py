@@ -3,8 +3,18 @@
 ## Copyright (C) 2021 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, sys
-from subprocess import check_output, STDOUT, call, Popen, PIPE
+"""
+Point /etc/resolv.conf at the Tor DNS -- a Whonix-Gateway-only concern.
+
+On a Whonix-Gateway the box itself must resolve names through Tor's DNSPort
+(via the Qubes/qemu primary DNS), so the privileged anon-dns helper rewrites
+/etc/resolv.conf accordingly. On plain Debian / Kicksecure the system resolver
+is assumed to already be configured and working, and tor-control-panel does not
+touch DNS -- so both functions are deliberate no-ops off Whonix.
+"""
+
+import sys
+from subprocess import Popen, PIPE
 
 from . import privilege
 ## Single source of the Whonix-gateway check (defined in tor_status).
@@ -12,7 +22,7 @@ from .tor_status import whonix
 
 def edit_etc_resolv_conf_add():
    if not whonix:
-      ## Not implemented for non-Whonix.
+      ## Whonix-Gateway only; on Debian/Kicksecure DNS is assumed already set up.
       return
 
    try:
@@ -25,7 +35,7 @@ def edit_etc_resolv_conf_add():
 
 def edit_etc_resolv_conf_remove():
    if not whonix:
-      ## Not implemented for non-Whonix.
+      ## Whonix-Gateway only; on Debian/Kicksecure DNS is assumed already set up.
       return
 
    try:
