@@ -614,13 +614,13 @@ class TorControlPanel(QDialog):
                 self.user_frame.hide()
 
                 ## Retrieve custom bridges (sanitized; shared with the wizard).
-                bridge_lines = torrc_gen.read_custom_bridge_lines(
-                    self.torrc_file_path)
-                if bridge_lines:
-                    self.custom_bridges.clear()
-                    for line in bridge_lines:
-                        self.custom_bridges.append(line)
-                    self.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
+                ## Clear unconditionally so stale bridges from a previous view
+                ## do not linger when the current torrc has none.
+                self.custom_bridges.clear()
+                for line in torrc_gen.read_custom_bridge_lines(
+                        self.torrc_file_path):
+                    self.custom_bridges.append(line)
+                self.custom_bridges.moveCursor(QtGui.QTextCursor.Start)
 
                 self.custom_bridges_frame.show()
                 self.use_custom_bridges = True

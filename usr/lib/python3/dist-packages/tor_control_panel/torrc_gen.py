@@ -104,12 +104,13 @@ def read_custom_bridge_lines(torrc_file):
         return []
     bridge_lines = []
     for line in contents.split('\n'):
-        stripped = line.strip()
-        if stripped.startswith('Bridge'):
-            ## Drop the 'Bridge' prefix (slice, not str.strip which takes a
-            ## character SET) and the surrounding whitespace, then sanitize.
-            bridge_lines.append(
-                sanitize_string(stripped[len('Bridge'):].strip()))
+        ## Match the exact 'Bridge' directive token, not the prefix, so
+        ## unrelated directives that merely start with 'Bridge' (BridgeRelay,
+        ## BridgeDistribution, ...) are not mistaken for a custom bridge and
+        ## surfaced -- sliced and sanitized -- to the user.
+        tokens = line.strip().split(None, 1)
+        if len(tokens) == 2 and tokens[0] == 'Bridge':
+            bridge_lines.append(sanitize_string(tokens[1].strip()))
     return bridge_lines
 
 def gen_torrc(args):

@@ -678,14 +678,13 @@ class AnonConnectionWizard(QWizard):
 
         if Common.use_custom_bridges:
             ## Retrieve custom bridges (sanitized; shared with TorControlPanel).
-            bridge_lines = torrc_gen.read_custom_bridge_lines(
-                Common.torrc_file_path)
-            if bridge_lines:
-                self.bridge_wizard_page.custom_bridges.clear()
-                for line in bridge_lines:
-                    self.bridge_wizard_page.custom_bridges.append(line)
-                self.bridge_wizard_page.custom_bridges.moveCursor(
-                    QtGui.QTextCursor.Start)
+            ## Clear unconditionally so stale bridges do not linger.
+            self.bridge_wizard_page.custom_bridges.clear()
+            for line in torrc_gen.read_custom_bridge_lines(
+                    Common.torrc_file_path):
+                self.bridge_wizard_page.custom_bridges.append(line)
+            self.bridge_wizard_page.custom_bridges.moveCursor(
+                QtGui.QTextCursor.Start)
 
         if Common.use_default_bridges or Common.use_custom_bridges:
                 self.bridge_wizard_page.bridges_checkbox.setChecked(True)
