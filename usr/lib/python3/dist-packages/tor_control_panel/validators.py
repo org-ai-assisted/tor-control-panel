@@ -14,6 +14,11 @@ import socket
 
 def valid_ip(address):
     """True if `address` resolves as an IPv4 or IPv6 address / host."""
+    ## Reject empty/blank input explicitly: getaddrinfo('') is platform-
+    ## dependent (may return loopback rather than raising), which would let an
+    ## empty proxy/bridge host slip through as "valid".
+    if not address or not str(address).strip():
+        return False
     try:
         ## getaddrinfo (unlike gethostbyname) also resolves IPv6 addresses.
         socket.getaddrinfo(address, None)

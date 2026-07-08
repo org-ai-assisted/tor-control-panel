@@ -157,6 +157,7 @@ class TorBootstrap(QThread):
 
     def run(self):
         """Thread body: connect to Tor, drive bootstrap, emit (phase, percent)."""
+        import stem
         self.tor_controller = self.connect_to_control_port()
         ## If DisableNetwork is 1, toggle it to 0 -- we want Tor to connect to
         ## the network.
@@ -181,7 +182,17 @@ class TorBootstrap(QThread):
         bootstrap_percent = 0
         while bootstrap_percent < 100:
             bootstrap_phase = ''
-            bootstrap_status = self.tor_controller.get_info("status/bootstrap-phase")
+            try:
+                bootstrap_status = self.tor_controller.get_info("status/bootstrap-phase")
+            except stem.ControllerError:
+                ## The controller dropped mid-bootstrap (e.g. Tor restarted, the
+                ## socket closed). Emit a failure phase and end the thread
+                ## cleanly, rather than letting the exception abort the QThread
+                ## with no final signal and the UI stuck on the last percent.
+                sys.stdout.write('Bootstrap monitoring: controller connection lost.\n')
+                sys.stdout.flush()
+                self.signal.emit('socket_error', 0)
+                return
 
             if bootstrap_status != self.previous_status:
                 progress_match = re.match('.* PROGRESS=([0-9]+).*', bootstrap_status)

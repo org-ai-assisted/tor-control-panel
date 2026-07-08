@@ -63,6 +63,15 @@ if [ ! -e "${main_torrc}" ]; then
    install --mode=0644 -- /dev/null "${main_torrc}"
 fi
 
+## Migration: an older tor-control-panel wrote
+## '%include /usr/local/etc/torrc.d/*.conf' here. Tor's AppArmor profile forbids
+## /usr/local on plain Debian, so that stale include keeps Tor from starting --
+## delete it. Only reached on non-Whonix (torrc_dir is /etc/tor/torrc.d here),
+## so this never removes the include we are about to rely on.
+sed --in-place --regexp-extended \
+   '\#^[[:space:]]*%include[[:space:]]+/usr/local/etc/torrc\.d(/|[[:space:]]|$)#d' \
+   -- "${main_torrc}"
+
 ## Ensure the main torrc %includes the drop-in directory, so Tor reads it. Match
 ## an active '%include' directive (first token, not a comment) that references
 ## the directory; add it only when absent. Escape regex metacharacters in the

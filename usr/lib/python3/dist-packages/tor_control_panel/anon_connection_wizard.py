@@ -737,8 +737,9 @@ class AnonConnectionWizard(QWizard):
 
         if bootstrap_phase == 'no_controller':
             self.bootstrap_thread.terminate()
-            button_reply = QMessageBox.warning(self, 'Tor Controller Not Constructed', 'Tor controller \
-                                              cannot be constructed.')
+            button_reply = QMessageBox.warning(
+                self, 'Tor Controller Not Constructed',
+                'Tor controller cannot be constructed.')
             if button_reply == QMessageBox.Ok:
                 sys.exit(1)
 

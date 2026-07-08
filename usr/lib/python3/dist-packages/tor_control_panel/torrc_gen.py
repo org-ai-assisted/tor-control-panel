@@ -130,6 +130,9 @@ def gen_torrc(args):
                 if bridge.strip():
                     torrc_content.append('{0}\n'.format(bridge))
 
+    ## Transports found in the custom bridges (used below to decide whether the
+    ## meek/snowflake DNS workaround is needed); stays empty for non-custom.
+    emitted_plugins = set()
     if custom_bridges != 'None':
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
@@ -143,7 +146,6 @@ def gen_torrc(args):
             'snowflake': bridges_command[1],
             'meek_lite': bridges_command[2],
         }
-        emitted_plugins = set()
         for bridge_line in custom_bridges.split('\n'):
             tokens = bridge_line.split()
             transport = tokens[0] if tokens else ''
@@ -154,9 +156,13 @@ def gen_torrc(args):
             if bridge.strip():
                 torrc_content.append('Bridge {0}\n'.format(bridge))
 
-    # Required for meek and snowflake only.
+    # Required for meek and snowflake only (Whonix; no-op elsewhere).
     # https://forums.whonix.org/t/censorship-circumvention-tor-pluggable-transports/2601/9
-    if bridge_type.startswith('meek') or bridge_type.startswith('snowflake'):
+    # Trigger for the default meek/snowflake bridge types AND for custom bridges
+    # whose transports are meek_lite / snowflake -- otherwise those custom
+    # bridges miss the DNS workaround and can fail to connect.
+    if (bridge_type.startswith('meek') or bridge_type.startswith('snowflake')
+            or emitted_plugins & {'meek_lite', 'snowflake'}):
         edit_etc_resolv_conf_add()
 
     if proxy_type != 'None' and len(args) >= 7:
