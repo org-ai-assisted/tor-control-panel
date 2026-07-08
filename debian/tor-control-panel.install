@@ -1,7 +1,26 @@
 ## Copyright (C) 2020 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-## This file was generated using 'genmkfile debinstfile'.
+## The PyQt graphical front-ends. Depends on tor-control-panel-common for the
+## config logic.
 
-etc/*
-usr/*
+usr/bin/tor-control-panel
+usr/bin/anon-connection-wizard
+usr/bin/restart-tor-gui
+
+usr/libexec/tor-control-panel/tor-control-panel
+usr/libexec/restart-tor-gui/restart-tor-gui
+usr/libexec/anon-connection-wizard/anon-connection-wizard
+
+usr/lib/python3/dist-packages/tor_control_panel/tor_control_panel.py
+usr/lib/python3/dist-packages/tor_control_panel/anon_connection_wizard.py
+usr/lib/python3/dist-packages/tor_control_panel/restart_tor_gui.py
+usr/lib/python3/dist-packages/tor_control_panel/tor_bootstrap.py
+usr/lib/python3/dist-packages/tor_control_panel/info_gui.py
+
+usr/share/anon-connection-wizard/advancedsettings.ico
+usr/share/anon-connection-wizard/translations.yaml
+usr/share/applications/tor-control-panel.desktop
+usr/share/applications/anon_connection_wizard.desktop
+usr/share/applications/restart-tor-gui.desktop
+usr/share/tor-control-panel

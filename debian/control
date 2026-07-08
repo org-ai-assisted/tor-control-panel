@@ -13,14 +13,28 @@ Vcs-Git: https://github.com/Kicksecure/tor-control-panel.git
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 
-Package: tor-control-panel
+Package: tor-control-panel-common
 Architecture: all
 Depends: helper-scripts,
          pkexec,
-         mate-polkit,
          privleap,
          python3,
-         python3-ipy,
+         ${misc:Depends}
+Description: Tor control panel - GUI-independent config logic and helpers
+ The configuration logic shared by tor-control-panel and anon-connection-wizard,
+ with NO GUI (PyQt) dependency: torrc generation and parsing, DisableNetwork
+ handling, input validation, and the privilege runner (leaprun on Whonix /
+ Kicksecure, pkexec on plain Debian). Ships the privileged helpers that write
+ the torrc and control the Tor service, plus the default-bridge data.
+ .
+ Installing this package alone lets the Tor configuration code be used from the
+ command line, without pulling in PyQt. The graphical front-ends are in the
+ tor-control-panel package.
+
+Package: tor-control-panel
+Architecture: all
+Depends: tor-control-panel-common (= ${binary:Version}),
+         mate-polkit,
          python3-pyqt5,
          python3-stem,
          python3-yaml,
@@ -29,7 +43,7 @@ Depends: helper-scripts,
 Breaks: anon-connection-wizard (<< 1:11.5-1)
 Replaces: anon-connection-wizard (<< 1:11.5-1)
 Provides: anon-connection-wizard
-Recommends: obfs4proxy, tor
+Recommends: obfs4proxy, snowflake-client, onioncircuits, tor
 Description: Tor Control Graphical User Interfaces
  WARNING: Not (yet) a standalone ready to use outside of Whonix:
  .
