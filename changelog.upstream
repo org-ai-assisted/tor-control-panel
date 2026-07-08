@@ -1,3 +1,30 @@
+commit c0b5ab55d49c39ab0e4a4b1b0161d147927023d4
+Merge: 2bac63d 433252e
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Wed Jul 8 14:05:50 2026 -0400
+
+    Merge remote-tracking branch 'refs/remotes/org-ai-assisted/master'
+
+commit 433252ef0ed99b5ac4c07b1c595b4cfba643565f
+Author: claude (dev59 80703270-dce8-4156-8b22-2f05b438249c) <noreply@anthropic.com>
+Date:   Tue Jul 7 10:41:28 2026 -0400
+
+    Wire dist-ai test suite into CI
+
+    Add the consumer opt-in for the org-ai-assisted/dist-ai
+    tor-control-panel-tests suite: CLAUDE.md / AGENTS.md pointers to the
+    suite, the universal consumer-dist-ai-tests.yml wrapper (byte-identical
+    to developer-meta-files' template), and dm-consumer.yml requesting
+    python3-pyqt5 for the offscreen PyQt5 tests.
+
+    Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
+commit 2bac63dcdbbdf0c7dc253c496742c4f57814ab8a
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Tue Jul 7 10:42:04 2026 +0000
+
+    bumped changelog version
+
 commit 8bdaa2457825fcd061bf49f8b38c0f01ab2578de
 Author: Patrick Schleizer <adrelanos@whonix.org>
 Date:   Tue Jul 7 06:21:01 2026 -0400
