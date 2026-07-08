@@ -57,10 +57,9 @@ def ensure_debian_tor_group_access(parent):
 
     if privilege.run('add-tor-group') == 0:
         QMessageBox.information(
-            parent, 'Log out to apply',
+            parent, 'Re-login required',
             "Your account was added to the 'debian-tor' group.\n\n"
-            "Log out and log back in (or reboot) for tor-control-panel to "
-            "access Tor -- group membership only takes effect at login.")
+            "Please re-login or reboot for the change to take effect.")
     else:
         QMessageBox.warning(
             parent, 'Could not grant access',
