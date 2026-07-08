@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+
+<!--
+  Copyright (C) 2023 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@kicksecure.com>
+  See the file COPYING for copying conditions.
+
+  polkit actions for tor-control-panel's plain-Debian (pkexec) privilege path,
+  used when privleap is absent. Each action authorizes ONE fixed, self-
+  validating helper (not a general-purpose tool), so the surface is exactly the
+  Tor operations the GUI needs: control the tor@default service, stage the
+  torrc, make the torrc sane, and read the Tor log.
+-->
+
+<policyconfig>
+  <vendor>Kicksecure</vendor>
+  <vendor_url>https://www.kicksecure.com/</vendor_url>
+
+  <action id="com.kicksecure.tor-control-panel.tor-control">
+    <description>Control the Tor service</description>
+    <message>Authentication is required to restart, reload, stop or query the Tor (tor@default) service.</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/anon-connection-wizard/acw-tor-control</annotate>
+  </action>
+
+  <action id="com.kicksecure.tor-control-panel.write-torrc">
+    <description>Write the Tor configuration</description>
+    <message>Authentication is required to write the tor-control-panel Tor configuration.</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/anon-connection-wizard/acw-write-torrc</annotate>
+  </action>
+
+  <action id="com.kicksecure.tor-control-panel.config-sane">
+    <description>Repair the Tor configuration</description>
+    <message>Authentication is required to make the Tor configuration sane for tor-control-panel.</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/tor-control-panel/tor-config-sane</annotate>
+  </action>
+
+  <action id="com.kicksecure.tor-control-panel.read-log">
+    <description>Read the Tor log</description>
+    <message>Authentication is required to read the Tor service log.</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/tor-control-panel/tcp-read-tor-log</annotate>
+  </action>
+
+</policyconfig>
