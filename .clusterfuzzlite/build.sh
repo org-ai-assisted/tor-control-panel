@@ -19,6 +19,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
 
 ## NOTE: no CI-guard here. This script is invoked by ClusterFuzzLite
 ## inside the OSS-Fuzz base-builder container; it does not see the
