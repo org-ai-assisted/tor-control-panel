@@ -37,7 +37,7 @@ Description: Tor control panel - GUI-independent config logic and helpers
 Package: tor-control-panel-pkexec
 Architecture: all
 Depends: tor-control-panel-common (= ${binary:Version}),
-         polkitd | policykit-1,
+         polkitd,
          pkexec,
          ${misc:Depends}
 Recommends: mate-polkit
@@ -52,6 +52,7 @@ Description: Tor control panel - pkexec/polkit privilege policies
 Package: tor-control-panel
 Architecture: all
 Depends: tor-control-panel-common (= ${binary:Version}),
+         python3,
          python3-pyqt5,
          python3-stem,
          python3-yaml,
