@@ -141,6 +141,22 @@ def write_to_temp_then_move(content):
 
     privilege.check_run('acw-write-torrc')
 
+def user_in_debian_tor_group():
+    """True if the current user is a member of the debian-tor group.
+
+    Checks /etc/group (not the running process's groups), because on plain
+    Debian the tor control socket + cookie are group-accessible to debian-tor
+    and the GUI needs to know whether the account has been granted access --
+    even before the user has logged out and back in for it to take effect.
+    """
+    import grp
+    import getpass
+    try:
+        return getpass.getuser() in grp.getgrnam('debian-tor').gr_mem
+    except KeyError:
+        return False
+
+
 def cat(filename):
     """Print the contents of `filename` (debug helper)."""
     print(f"cat filename: '{filename}'")

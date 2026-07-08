@@ -46,6 +46,10 @@ _ACTION_COMMANDS = {
         ['/usr/libexec/tor-control-panel/tor-config-sane'],
     'tor-control-panel-read-tor-default-log':
         ['/usr/libexec/tor-control-panel/tcp-read-tor-log'],
+    ## Plain Debian: add the desktop account(s) to the debian-tor group so the
+    ## GUI can reach Tor's control socket. Fixed helper, no arguments.
+    'add-tor-group':
+        ['/usr/libexec/tor-control-panel/tcp-add-tor-group'],
     ## Whonix-Gateway only: anon-dns (from anon-gw-anonymizer-config) configures
     ## Whonix-Gateway system DNS. Never invoked on plain Debian, where DNS is
     ## assumed already configured (see edit_etc_resolv_conf).

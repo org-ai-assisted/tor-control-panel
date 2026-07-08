@@ -62,4 +62,15 @@
     <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/tor-control-panel/tcp-read-tor-log</annotate>
   </action>
 
+  <action id="com.kicksecure.tor-control-panel.add-tor-group">
+    <description>Grant Tor control access</description>
+    <message>Authentication is required to add your account to the debian-tor group so tor-control-panel can access Tor's control port.</message>
+    <defaults>
+      <allow_any>auth_admin_keep</allow_any>
+      <allow_inactive>auth_admin_keep</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/tor-control-panel/tcp-add-tor-group</annotate>
+  </action>
+
 </policyconfig>

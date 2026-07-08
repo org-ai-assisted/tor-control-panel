@@ -21,6 +21,53 @@ from sanitize_string.sanitize_string_lib import sanitize_string
 from . import tor_status, tor_bootstrap, torrc_gen, info, info_gui, validators, privilege
 
 
+def ensure_debian_tor_group_access(parent):
+    """Prompt (plain Debian only) to add the account to the debian-tor group.
+
+    On plain Debian the Tor control socket + cookie are accessible only to the
+    debian-tor group, so the desktop account must be a member for either GUI to
+    reach Tor. On Whonix anon-gw-anonymizer-config already does this, so skip.
+    Shows the exact privileged command before running it, then tells the user a
+    re-login is needed (group membership only applies at login). `parent` is the
+    QWidget to parent the dialogs to.
+    """
+    if tor_status.whonix:
+        return
+    if tor_status.user_in_debian_tor_group():
+        return
+    try:
+        command_display = ' '.join(privilege.command('add-tor-group'))
+    except privilege.NoPrivilegeMethod:
+        ## No escalation method available; nothing we can offer to run.
+        return
+
+    import getpass
+    current_user = getpass.getuser()
+    reply = QMessageBox.question(
+        parent, 'Grant Tor control access',
+        "tor-control-panel needs to add your desktop account to the "
+        "'debian-tor' group so it can reach Tor's control port.\n\n"
+        "The following command will be run, with administrator "
+        "authentication:\n\n    " + command_display + "\n\n"
+        "It auto-detects and adds your desktop account (currently '"
+        + current_user + "') to the 'debian-tor' group. Proceed?",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+    if reply != QMessageBox.Yes:
+        return
+
+    if privilege.run('add-tor-group') == 0:
+        QMessageBox.information(
+            parent, 'Log out to apply',
+            "Your account was added to the 'debian-tor' group.\n\n"
+            "Log out and log back in (or reboot) for tor-control-panel to "
+            "access Tor -- group membership only takes effect at login.")
+    else:
+        QMessageBox.warning(
+            parent, 'Could not grant access',
+            "Adding your account to the 'debian-tor' group failed. You can do "
+            "it manually:\n\n    sudo adduser " + current_user + " debian-tor")
+
+
 class CommandThread(QtCore.QThread):
     ## Runs a blocking privileged / subprocess operation (e.g. Enable network's
     ## leaprun calls) off the GUI thread so the UI stays responsive. The callable
@@ -48,6 +95,9 @@ class TorControlPanel(QDialog):
         ## privilege runner so it uses leaprun on Whonix/Kicksecure and pkexec
         ## on a plain-Debian system.
         privilege.run('tor-config-sane')
+
+        ## Plain Debian: make sure the account can reach Tor's control socket.
+        ensure_debian_tor_group_access(self)
 
         self.setMinimumSize(650, 465)
 

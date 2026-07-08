@@ -1,0 +1,76 @@
+#!/bin/bash
+
+## Copyright (C) 2026 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## AI-Assisted
+
+## Add the tor-control-panel desktop account to the 'debian-tor' group so the
+## GUI can reach Tor's control socket and cookie on plain Debian / Kicksecure.
+## This mirrors what anon-gw-anonymizer-config's postinst already does on Whonix.
+##
+## The account is AUTO-DETECTED, not hardcoded, so this works whatever the
+## desktop user is named:
+##   * pkexec / sudo expose the caller directly (PKEXEC_UID / SUDO_UID).
+##   * privleap (leaprun) forwards no caller identity to the command, so fall
+##     back to the user owning an active graphical (x11 / wayland) login session.
+## Only an existing, regular (uid >= 1000) account is ever added, and only ever
+## to the single 'debian-tor' group.
+##
+## Group membership only takes effect at the next login -- a running session
+## keeps the group set it had at login -- so the GUI tells the user to re-login.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
+
+true "$0: START"
+
+target_user=''
+
+## pkexec / sudo: the caller's uid is in the environment.
+if [ -n "${PKEXEC_UID:-}" ]; then
+   target_user="$(getent passwd "${PKEXEC_UID}" | cut -d ':' -f 1)"
+elif [ -n "${SUDO_UID:-}" ]; then
+   target_user="$(getent passwd "${SUDO_UID}" | cut -d ':' -f 1)"
+fi
+
+## privleap / anything else: use the active graphical login session's user.
+if [ -z "$target_user" ] || [ "$target_user" = 'root' ]; then
+   target_user=''
+   while read -r session_id; do
+      [ -n "$session_id" ] || continue
+      session_type="$(loginctl show-session "$session_id" --property=Type --value 2>/dev/null || true)"
+      if [ "$session_type" != 'x11' ] && [ "$session_type" != 'wayland' ]; then
+         continue
+      fi
+      session_name="$(loginctl show-session "$session_id" --property=Name --value 2>/dev/null || true)"
+      if [ -n "$session_name" ] && [ "$session_name" != 'root' ]; then
+         target_user="$session_name"
+         break
+      fi
+   done < <(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}')
+fi
+
+if [ -z "$target_user" ]; then
+   echo "$0: could not auto-detect the desktop account to add to debian-tor" >&2
+   exit 1
+fi
+
+## Only ever add an existing, regular (non-system) account.
+target_uid="$(id --user -- "$target_user" 2>/dev/null || true)"
+if [ -z "$target_uid" ] || [ "$target_uid" -lt 1000 ]; then
+   echo "$0: refusing to add '$target_user' (not a regular user account)" >&2
+   exit 1
+fi
+
+## The group normally exists (shipped by the tor package); create it just in
+## case, mirroring anon-gw.
+addgroup --quiet debian-tor 2>/dev/null || true
+
+adduser --quiet "$target_user" debian-tor
+
+true "$0: added '$target_user' to debian-tor. END"

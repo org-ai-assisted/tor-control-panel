@@ -619,6 +619,10 @@ class AnonConnectionWizard(QWizard):
         ## Dispatched through the privilege runner (leaprun / pkexec / sudo).
         privilege.run('tor-config-sane')
 
+        ## Plain Debian: ensure the account can reach Tor's control socket.
+        from .tor_control_panel import ensure_debian_tor_group_access
+        ensure_debian_tor_group_access(self)
+
         ## Guarantee a torrc drop-in exists so the rest of the package can read it
         ## unconditionally.
         if not os.path.exists(Common.torrc_file_path):

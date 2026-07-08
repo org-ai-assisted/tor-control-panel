@@ -20,5 +20,6 @@ usr/libexec/anon-connection-wizard/acw-tor-control
 usr/libexec/anon-connection-wizard/acw-write-torrc
 usr/libexec/tor-control-panel/tor-config-sane
 usr/libexec/tor-control-panel/tcp-read-tor-log
+usr/libexec/tor-control-panel/tcp-add-tor-group
 
 usr/share/anon-connection-wizard/bridges_default
