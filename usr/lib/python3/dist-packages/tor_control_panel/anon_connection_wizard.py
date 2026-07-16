@@ -645,6 +645,8 @@ class AnonConnectionWizard(QWizard):
             args = ['None', 'None', 'None']
             torrc_gen.gen_torrc(args)
 
+        self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
+
         self.steps = Common.wizard_steps
 
         self.connection_main_page = ConnectionMainPage()
@@ -826,7 +828,7 @@ class AnonConnectionWizard(QWizard):
 
                 if self.tor_status == 'tor_enabled' or self.tor_status == 'tor_already_enabled':
                     self.tor_status_page.bootstrap_progress.show()
-                    self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
+                    # self.bootstrap_thread = tor_bootstrap.TorBootstrap(self)
                     self.bootstrap_thread.signal.connect(self.update_bootstrap)
                     self.bootstrap_thread.start()
 
@@ -891,39 +893,30 @@ class AnonConnectionWizard(QWizard):
         torrc_gen.gen_torrc(args)
 
     def back_button_clicked(self):
-        try:
-            if self.bootstrap_thread:
-                self.bootstrap_thread.terminate()
-                self.bootstrap_thread = False
+        if not self.bootstrap_done:
+            self.bootstrap_thread.terminate()
 
-                if Common.init_tor_status == 'tor_enabled':
-                    pass
-                elif Common.init_tor_status == 'tor_disabled':
-                    tor_status.set_disabled()
+            if Common.init_tor_status == 'tor_enabled':
+                pass
+            elif Common.init_tor_status == 'tor_disabled':
+                tor_status.set_disabled()
 
-        except AttributeError:
-            pass
-
-        self.bootstrap_done = False
         self.button(QWizard.FinishButton).hide()
         self.button(QWizard.CancelButton).show()
 
     def cancel_button_clicked(self):
-        if self.bootstrap_thread:
+        if not self.bootstrap_done:
             self.bootstrap_thread.terminate()
-            tor_status.set_disabled()
 
-        # recover Tor to the initial status before the starting of anon_connection_wizard
         if Common.init_tor_status == 'tor_enabled':
             pass
         elif Common.init_tor_status == 'tor_disabled':
             tor_status.set_disabled()
 
+        print('Cancel button was clicked. Quitting anon-connection-wizard.')
+
     def finish_button_clicked(self):
-        # The True indicates the acw has finished successfully
-        # TODO: this does not work as expected; even when the cancel button is clicked,
-        # the wizard still return True
-        return True
+        print('Finish button was clicked. Quitting anon-connection-wizard.')
 
     def show_finish_button(self):
         if self.bootstrap_done or Common.disable_tor:
