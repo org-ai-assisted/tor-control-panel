@@ -32,7 +32,6 @@ class TorBootstrap(QThread):
         The order below mirrors that table so drift stays visible.
         '''
         self.tag_phase = {'starting': 'Starting',
-                    ## Initial connection to any relay.
                     'conn_pt': 'Connecting to pluggable transport',
                     'conn_done_pt': 'Connected to pluggable transport',
                     'conn_proxy': 'Connecting to proxy',
@@ -41,7 +40,6 @@ class TorBootstrap(QThread):
                     'conn_done': 'Connected to a relay',
                     'handshake': 'Handshaking with a relay',
                     'handshake_done': 'Handshake finished with a relay',
-                    ## Loading directory information.
                     'onehop_create': 'Establishing an encrypted directory connection',
                     'requesting_status': 'Retrieving network status',
                     'loading_status': 'Loading network status',
@@ -49,7 +47,6 @@ class TorBootstrap(QThread):
                     'requesting_descriptors': 'Requesting relay information',
                     'loading_descriptors': 'Loading relay information',
                     'enough_dirinfo': 'Loaded enough directory info to build circuits',
-                    ## Connecting to a relay for application circuits.
                     'ap_conn_pt': 'Connecting to pluggable transport to build circuits',
                     'ap_conn_done_pt': 'Connected to pluggable transport to build circuits',
                     'ap_conn_proxy': 'Connecting to proxy to build circuits',
@@ -58,7 +55,6 @@ class TorBootstrap(QThread):
                     'ap_conn_done': 'Connected to a relay to build circuits',
                     'ap_handshake': 'Finishing handshake with a relay to build circuits',
                     'ap_handshake_done': 'Handshake finished with a relay to build circuits',
-                    ## Creating application circuits.
                     'circuit_create': 'Establishing a Tor circuit',
                     'done': 'Connected to the Tor network!',
                     ## Legacy tags, emitted by Tor before 0.4.0.x.
@@ -157,7 +153,7 @@ class TorBootstrap(QThread):
         bootstrap_percent = 0
         while bootstrap_percent < 100:
             bootstrap_phase = ''
-            bootstrap_status = self.tor_controller.get_info("status/bootstrap-phase")
+            bootstrap_status = self.tor_controller.get_info('status/bootstrap-phase')
 
             if bootstrap_status != self.previous_status:
                 bootstrap_percent = int(re.match('.* PROGRESS=([0-9]+).*', bootstrap_status).group(1))
@@ -170,7 +166,7 @@ class TorBootstrap(QThread):
                 else:
                     '''Use a static message to cover unknown bootstrap tag to avoid potential
                     misleading/harmful info shown.'''
-                    bootstrap_phase = "Unknown Bootstrap TAG. This is harmless. Please run this program from command line to view console output and report this."
+                    bootstrap_phase = 'Unknown Bootstrap TAG. This is harmless. Please run this program from command line to view console output and report this.'
                     sys.stdout.write('Unknown Bootstrap TAG. Full message is shown in the very next line:\n')
                     sys.stdout.flush()
                 sys.stdout.write('{0}\n'.format(bootstrap_status))
