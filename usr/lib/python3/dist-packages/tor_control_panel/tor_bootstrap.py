@@ -23,32 +23,49 @@ class TorBootstrap(QThread):
         self.control_socket_path = '/run/tor/control'
         self.previous_status = ''
         #self.is_running = False
-        '''The TAG to phase mapping is mainly according to:
-        https://gitweb.torproject.org/tor-launcher.git/tree/src/chrome/locale/en/torlauncher.properties
+        '''TAG to human readable phase mapping.
+
+        Must cover every tag Tor can emit, otherwise the run() fallback shows
+        the user an "Unknown Bootstrap TAG" placeholder instead of progress.
+        The authoritative tag list is Tor's own boot_to_str_tab table:
+        https://gitlab.torproject.org/tpo/core/tor/-/blob/main/src/feature/control/control_bootstrap.c
+        The order below mirrors that table so drift stays visible.
         '''
         self.tag_phase = {'starting': 'Starting',
+                    ## Initial connection to any relay.
+                    'conn_pt': 'Connecting to pluggable transport',
+                    'conn_done_pt': 'Connected to pluggable transport',
+                    'conn_proxy': 'Connecting to proxy',
+                    'conn_done_proxy': 'Connected to proxy',
                     'conn': 'Connecting to a relay',
-                    'conn_dir': 'Connecting to a relay directory',
-                    'conn_done_pt': "Connected to pluggable transport",
-                    'handshake_dir': 'Finishing handshake with directory server',
+                    'conn_done': 'Connected to a relay',
+                    'handshake': 'Handshaking with a relay',
+                    'handshake_done': 'Handshake finished with a relay',
+                    ## Loading directory information.
                     'onehop_create': 'Establishing an encrypted directory connection',
                     'requesting_status': 'Retrieving network status',
                     'loading_status': 'Loading network status',
                     'loading_keys': 'Loading authority certificates',
-                    'enough_dirinfo': 'Loaded enough directory info to build circuits',
-                    'ap_conn': 'Connecting to a relay to build circuits',
-                    'ap_conn_done': 'Connected to a relay to build circuits',
-                    'ap_conn_done_pt': 'Connected to pluggable transport to build circuits',
-                    'ap_handshake': 'Finishing handshake with a relay to build circuits',
-                    'ap_handshake_done': 'Handshake finished with a relay to build circuits',
                     'requesting_descriptors': 'Requesting relay information',
                     'loading_descriptors': 'Loading relay information',
-                    'conn_or': 'Connecting to the Tor network',
-                    'conn_done': "Connected to a relay",
-                    'handshake': "Handshaking with a relay",
-                    'handshake_or': 'Finishing handshake with first hop',
+                    'enough_dirinfo': 'Loaded enough directory info to build circuits',
+                    ## Connecting to a relay for application circuits.
+                    'ap_conn_pt': 'Connecting to pluggable transport to build circuits',
+                    'ap_conn_done_pt': 'Connected to pluggable transport to build circuits',
+                    'ap_conn_proxy': 'Connecting to proxy to build circuits',
+                    'ap_conn_done_proxy': 'Connected to proxy to build circuits',
+                    'ap_conn': 'Connecting to a relay to build circuits',
+                    'ap_conn_done': 'Connected to a relay to build circuits',
+                    'ap_handshake': 'Finishing handshake with a relay to build circuits',
+                    'ap_handshake_done': 'Handshake finished with a relay to build circuits',
+                    ## Creating application circuits.
                     'circuit_create': 'Establishing a Tor circuit',
-                    'done': 'Connected to the Tor network!'}
+                    'done': 'Connected to the Tor network!',
+                    ## Legacy tags, emitted by Tor before 0.4.0.x.
+                    'conn_dir': 'Connecting to a relay directory',
+                    'handshake_dir': 'Finishing handshake with directory server',
+                    'conn_or': 'Connecting to the Tor network',
+                    'handshake_or': 'Finishing handshake with first hop'}
 
     def connect_to_control_port(self):
         import stem
