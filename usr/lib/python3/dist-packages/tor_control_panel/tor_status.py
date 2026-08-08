@@ -3,7 +3,7 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, subprocess, fcntl
+import os, re, subprocess, fcntl
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix=True
@@ -15,9 +15,34 @@ else:
 torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
 acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
+## torrc options whose value is a credential. This module prints torrc content
+## to stdout for troubleshooting, and stdout of a GUI app started from a
+## desktop file is captured by the session journal, so the value has to be
+## stripped before it is printed.
+credential_options = [
+    'Socks5ProxyUsername',
+    'Socks5ProxyPassword',
+    'HTTPProxyAuthenticator',
+    'HTTPSProxyAuthenticator',
+    'HashedControlPassword',
+]
+
+credential_line_regex = re.compile(
+    r'^(\s*(?:' + '|'.join(credential_options) + r')\s+).*$',
+    re.IGNORECASE | re.MULTILINE)
+
+
+def redact_credentials(content):
+    """Replace the value of any credential-bearing torrc option.
+
+    Keeps the option name so the log still shows that the option was set,
+    which is what the troubleshooting output is for.
+    """
+    return credential_line_regex.sub(r'\1[REDACTED]', content)
+
 
 def tor_status():
-    print("tor_status was called.")
+    print('tor_status was called.')
 
     # output = self.tor_enabled_check()  #subprocess.check_output('/usr/libexec/helper-scripts/tor_enabled_check')
     # output = output.decode("UTF-8").strip()
@@ -27,17 +52,17 @@ def tor_status():
         with open(torrc_file_path, 'r') as f:
             content = f.readlines()
             for line in content:
-                if "DisableNetwork 1" in line:
+                if 'DisableNetwork 1' in line:
                     return False
-                elif "DisableNetwork 0" in line:
+                elif 'DisableNetwork 0' in line:
                     return True
 
     if tor_enabled_check():
-        print("tor_status status: tor_enabled")
-        return "tor_enabled"
+        print('tor_status status: tor_enabled')
+        return 'tor_enabled'
     else:
-        print("tor_status status: tor_disabled")
-        return "tor_disabled"
+        print('tor_status status: tor_disabled')
+        return 'tor_disabled'
 
 '''Unlike tor_status() function which only shows the current state of the anon_connection_wizard.conf,
 set_enabled() and set_disabled() function will try to repair the missing torrc or DisableNetwork line.
@@ -53,12 +78,12 @@ set_enabled() will:
 3. guarantee Tor uses DisableNetwork 0
 '''
 def set_enabled():
-    print("set_enabled was called.")
+    print('set_enabled was called.')
 
     content = ''
 
     # if os.path.exists(torrc_file_path):
-    with open(torrc_file_path, 'r', encoding="utf-8") as f:
+    with open(torrc_file_path, 'r', encoding='utf-8') as f:
         content = f.readlines()
 
     disable_network_found = False
@@ -68,7 +93,7 @@ def set_enabled():
             break
 
     if disable_network_found:
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
+        with open(torrc_file_path, 'r', encoding='utf-8') as f:
             content = f.read().replace('DisableNetwork 1', 'DisableNetwork 0')
     else:
         # if os.path.exists(torrc_file_path):
@@ -104,12 +129,12 @@ set_disabled() will:
 3. guarantee Tor uses DisableNetwork 1
 '''
 def set_disabled():
-    print("set_disabled was called.")
+    print('set_disabled was called.')
 
     content = ''
 
     # if os.path.exists(torrc_file_path):
-    with open(torrc_file_path, 'r',  encoding="utf-8") as f:
+    with open(torrc_file_path, 'r',  encoding='utf-8') as f:
         content = f.readlines()
 
     disable_network_found = False
@@ -119,12 +144,12 @@ def set_disabled():
             break
 
     if disable_network_found:
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
+        with open(torrc_file_path, 'r', encoding='utf-8') as f:
             content = f.read().replace('DisableNetwork 0', 'DisableNetwork 1')
 
     else:
         # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r', encoding="utf-8") as f:
+        with open(torrc_file_path, 'r', encoding='utf-8') as f:
             content = f.read() + '\n' + 'DisableNetwork 1' + '\n'
         # else:
         #     content = 'DisableNetwork 1' + '\n'
@@ -137,10 +162,10 @@ def set_disabled():
     return 'tor_disabled'
 
 def write_to_temp_then_move(content):
-    print("before:")
+    print('before:')
     cat(torrc_file_path)
     cat(acw_comm_file_path)
-    print(f"content to write: '{content}'")
+    print(f"content to write: '{redact_credentials(content)}'")
 
     with open(acw_comm_file_path, 'w') as comm_file:
         ## Using flock here prevents another anon-connection-wizard process
@@ -150,14 +175,14 @@ def write_to_temp_then_move(content):
         comm_file.write(content)
         ## No need to unlock, acw-write-torrc deletes the original file.
 
-    print("after 1:")
+    print('after 1:')
     cat(acw_comm_file_path)
 
     command = ['leaprun', 'acw-write-torrc']
-    print("tor_status.py: executing:", ' '.join(command))
+    print('tor_status.py: executing:', ' '.join(command))
     subprocess.check_call(command)
 
-    print("after 2:")
+    print('after 2:')
 
     cat(torrc_file_path)
 
@@ -171,14 +196,14 @@ def cat(filename):
         if not content:
             print(f"File is empty: '{filename}'")
         else:
-            print(content, end='')  # content already has newlines
-    print("")
+            print(redact_credentials(content), end='')  # content already has newlines
+    print('')
 
 ## Debugging: Executing this script directly.
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Example usage
-    print("Enabling...")
+    print('Enabling...')
     print(set_enabled())
-    print("Disabling...")
+    print('Disabling...')
     print(set_disabled())
-    print("Done.")
+    print('Done.')
