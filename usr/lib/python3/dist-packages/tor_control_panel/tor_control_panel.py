@@ -885,6 +885,11 @@ class TorControlPanel(QDialog):
         if tor_is_enabled and tor_is_running:
             self.tor_status = 'running'
             tor_state = True
+            ## Tor is up, so the only meaningful toggle is turning it off. The
+            ## Accept handler dispatches on the entry TEXT, so a stale 'Enable
+            ## network' left from an earlier state would both hide the disable
+            ## action and make Accept re-run set_enabled + restart_tor.
+            self.set_network_toggle('Disable network')
             ## when refresh is called from update_bootstrap, the thread
             ## would be destroyed while running, crashing the program.
             if bootstrap:
