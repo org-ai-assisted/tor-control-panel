@@ -35,9 +35,6 @@ concurrency:
 
 jobs:
   dist-ai-fuzz:
-    ## Pinned to an immutable commit rather than @master: this job executes
-    ## shared code from another repo, so a push there must not change what
-    ## runs here without a reviewed bump. Bump deliberately.
-    uses: org-ai-assisted/developer-meta-files/.github/workflows/reusable-dist-ai-tests.yml@69862539432fa06fa09a5d4f9bdc06a9cb917c4e
+    uses: org-ai-assisted/developer-meta-files/.github/workflows/reusable-dist-ai-tests.yml@master
     with:
       categories: '--fuzz'

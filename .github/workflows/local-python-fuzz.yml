@@ -91,9 +91,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: org-ai-assisted/dist-ai
-          ## Immutable commit, not a branch tip: step-summary-emit is
-          ## executed by this job. Bump deliberately.
-          ref: bcd882d77fc430c0bd04e39836c111c5761986c6
+          ref: master
           path: .github/dist-ai
           persist-credentials: false
 
@@ -158,9 +156,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: org-ai-assisted/dist-ai
-          ## Immutable commit, not a branch tip: step-summary-emit is
-          ## executed by this job. Bump deliberately.
-          ref: bcd882d77fc430c0bd04e39836c111c5761986c6
+          ref: master
           path: .github/dist-ai
           persist-credentials: false
 
