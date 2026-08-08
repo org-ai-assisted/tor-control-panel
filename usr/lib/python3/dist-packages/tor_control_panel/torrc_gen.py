@@ -99,7 +99,10 @@ def read_custom_bridge_lines(torrc_file):
     path = Path(torrc_file)
     if not path.exists():
         return []
-    contents = path.read_text(encoding='utf-8')
+    ## errors='replace': the torrc is edited by other tools and by hand, so a
+    ## stray non-UTF-8 byte must degrade the parse, not raise UnicodeDecodeError
+    ## out of a reader the GUI calls on every refresh.
+    contents = path.read_text(encoding='utf-8', errors='replace')
     if '# Custom' not in contents:
         return []
     bridge_lines = []
@@ -196,7 +199,9 @@ def parse_torrc():
     torrc_file_path_obj = Path(torrc_file_path)
     if not torrc_file_path_obj.exists():
         return ('None', 'None', '', '', '', '')
-    torrc_file_contents = torrc_file_path_obj.read_text(encoding='utf-8')
+    ## errors='replace' for the same reason as read_custom_bridge_lines().
+    torrc_file_contents = torrc_file_path_obj.read_text(
+        encoding='utf-8', errors='replace')
     torrc_file_lines = torrc_file_contents.split('\n')
     ## Detect features from active (non-comment) directives only; a commented
     ## '# HTTPSProxy ...' or '# UseBridges' must not be mistaken for a setting

@@ -39,7 +39,11 @@ def TestOneInput(data: bytes) -> None:
     if not isinstance(torrc_gen.main_torrc_includes_dropin(text), bool):
         raise RuntimeError('main_torrc_includes_dropin returned non-bool')
 
-    _SCRATCH.write_text(text, encoding='utf-8')
+    ## Write the RAW fuzz bytes, not the decoded string. write_text() of a
+    ## ConsumeUnicodeNoSurrogates() value always produces valid UTF-8, so the
+    ## harness could never reach the readers' decode path -- exactly where a
+    ## corrupted torrc would break them.
+    _SCRATCH.write_bytes(data)
 
     parsed = torrc_gen.parse_torrc()
     if not isinstance(parsed, (dict, tuple, list)):

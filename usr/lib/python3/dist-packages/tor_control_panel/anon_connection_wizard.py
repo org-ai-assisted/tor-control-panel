@@ -312,16 +312,20 @@ class BridgeWizardPage(QWizardPage):
                 Common.bridge_type = self.bridges_combo.currentText()
 
     def check_valid_custom_bridges(self):
-        return validators.valid_custom_bridges(Common.custom_bridges)
+        ## Validate what the editor currently holds, not the last value copied
+        ## into Common. Copying only happened when the editor was non-empty, so
+        ## clearing it left the previous text in Common.custom_bridges:
+        ## validation then passed and write_torrc wrote the stale bridges.
+        ## TorControlPanel.check_valid_custom_bridges already works this way.
+        return validators.valid_custom_bridges(self.custom_bridges.toPlainText())
 
     def nextId(self):
         if not Common.use_custom_bridges:
             return self.steps.index('proxy_wizard_page')
 
         else:
-            if self.custom_bridges.toPlainText() != '':
-                Common.bridge_type = self.bridges_combo.currentText()
-                Common.custom_bridges = self.custom_bridges.toPlainText()
+            Common.bridge_type = self.bridges_combo.currentText()
+            Common.custom_bridges = self.custom_bridges.toPlainText()
 
             if not self.check_valid_custom_bridges():
                 self.invalid_custom_bridges_box.setWindowModality(Qt.WindowModal)
