@@ -60,6 +60,17 @@ class TestRedactCredentials(unittest.TestCase):
             f'  socks5proxypassword {secret}\n')
         self.assertNotIn(secret, redacted)
 
+    def test_valueless_option_does_not_swallow_the_next_line(self):
+        ## The separator must be space/tab, not '\s' -- '\s' matches a newline,
+        ## so a credential option left without a value consumed the line break
+        ## and redacted the FOLLOWING directive, silently hiding it from the
+        ## troubleshooting output.
+        redacted = tor_status.redact_credentials(
+            'Socks5ProxyPassword\nUseBridges 1\nDisableNetwork 0\n')
+        self.assertIn('UseBridges 1', redacted)
+        self.assertIn('DisableNetwork 0', redacted)
+        self.assertNotIn('[REDACTED]', redacted)
+
     def test_cat_output_redacted(self):
         ## Integration: the real cat() is one of the two functions that print
         ## torrc content, so it is exercised rather than only the helper.

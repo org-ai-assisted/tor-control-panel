@@ -55,9 +55,18 @@ fi
 
 mkdir --parents --verbose -- "${torrc_dir}"
 
+## Trace the control flow, never the torrc content. xtrace prints every
+## command with its variables FULLY EXPANDED, so leaving it on across the read
+## and the write dumps the whole torrc -- proxy credentials included -- to
+## stderr. This helper runs as root and its stderr is captured by the journal,
+## which is exactly the disclosure tor_status.redact_credentials() exists to
+## prevent on the Python side.
+set +x
+
 contents="$(cat -- "${acw_comm_file_path}")"
 ## Sanity test.
 if [ "${contents}" = "" ]; then
+  set -x
   printf '%s\n' "$0: file '${acw_comm_file_path}' is empty!" >&2
   exit 1
 fi
@@ -68,6 +77,8 @@ fi
 ## destination directory is root-owned and not world-writable, so the target
 ## cannot be a planted symlink.
 printf '%s\n' "${contents}" > "${torrc_file_path}"
+
+set -x
 
 ## Set 40_tor_control_panel.conf to 0644: root writes, everyone reads, no normal
 ## user can edit it.

@@ -45,8 +45,12 @@ credential_options = [
     'HashedControlPassword',
 ]
 
+## Space and tab only, never '\s': '\s' matches a newline, so an option left
+## without a value ('Socks5ProxyPassword\n') would consume the line break and
+## redact the NEXT directive instead, silently hiding it from the
+## troubleshooting output.
 credential_line_regex = re.compile(
-    r'^(\s*(?:' + '|'.join(credential_options) + r')\s+).*$',
+    r'^([ \t]*(?:' + '|'.join(credential_options) + r')[ \t]+).*$',
     re.IGNORECASE | re.MULTILINE)
 
 
