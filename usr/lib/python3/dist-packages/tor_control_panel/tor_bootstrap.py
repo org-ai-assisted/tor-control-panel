@@ -4,14 +4,22 @@
 ## See the file COPYING for copying conditions.
 
 import sys
-import signal
 
 import os
-import re
 import time
+
+from sanitize_string.sanitize_string_lib import sanitize_string
+from .tor_bootstrap_parse import parse_bootstrap_phase
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication
+
+## Holds a strong reference to every TorBootstrap thread while it is running so
+## Python cannot garbage-collect a QThread that is still executing (which
+## crashes with "QThread: Destroyed while thread is still running"). Each thread
+## removes itself when it finishes. Callers keep their own bootstrap_thread
+## reference to the currently active thread separately.
+_active_bootstrap_threads = set()
 
 class TorBootstrap(QThread):
     signal = pyqtSignal(str, int)
@@ -19,10 +27,13 @@ class TorBootstrap(QThread):
     def __init__(self, main):
         super(TorBootstrap, self).__init__(main)
 
+        _active_bootstrap_threads.add(self)
+        self.finished.connect(
+            lambda: _active_bootstrap_threads.discard(self))
+
         self.control_cookie_path = '/run/tor/control.authcookie'
         self.control_socket_path = '/run/tor/control'
         self.previous_status = ''
-        #self.is_running = False
         '''TAG to human readable phase mapping.
 
         Must cover every tag Tor can emit, otherwise the run() fallback shows
@@ -64,24 +75,38 @@ class TorBootstrap(QThread):
                     'handshake_or': 'Finishing handshake with first hop'}
 
     def connect_to_control_port(self):
+        """Connect and authenticate to Tor's control socket.
+
+        Return a stem Controller on success, or None (after emitting the
+        relevant failure phase) if the socket is missing/unreadable or
+        authentication fails.
+        """
         import stem
         import stem.control
         import stem.socket
-        from stem.connection import connect
 
-        '''Step 1: Construct a Tor controller'''
-        # In case something wrong happened when trying to start Tor,
-        # causing /run/tor/control never be generated.
-        # We set up a time counter and hardcode the wait time limitation as 10s.
-
+        ## Step 1: construct a Tor controller. If starting Tor went wrong,
+        ## /run/tor/control may never be created, so wait for it for at most
+        ## ~5 seconds (25 * 0.2s) before giving up.
         bootstrap_phase = 'Constructing Tor Controller...'
         bootstrap_percent = 0
         self.signal.emit(bootstrap_phase, bootstrap_percent)
 
-        count=0
-        while not os.path.exists(self.control_socket_path) and count < 5:
-            count += 0.2
+        waited_seconds = 0
+        while not os.path.exists(self.control_socket_path) and waited_seconds < 5:
+            waited_seconds += 0.2
             time.sleep(0.2)
+
+        if not os.path.exists(self.control_socket_path):
+            ## The wait loop above timed out: the socket was never created
+            ## (Tor not running / not ready yet) -- distinct from a socket that
+            ## exists but is unreadable, which the next branch reports.
+            print(f"[ERROR] Control socket {self.control_socket_path} does not exist - Tor may not be running.")
+            bootstrap_phase = 'socket_error'
+            bootstrap_percent = 0
+            self.signal.emit(bootstrap_phase, bootstrap_percent)
+            time.sleep(10)
+            return None
 
         if not os.access(self.control_socket_path, os.R_OK):
             print(f"[ERROR] Cannot read control socket at {self.control_socket_path} - permission denied.")
@@ -115,7 +140,7 @@ class TorBootstrap(QThread):
         try:
             tor_controller.authenticate(self.control_cookie_path)
         except stem.connection.IncorrectCookieSize:
-            return None  #if # TODO: the cookie file's size is wrong
+            return None  # TODO: the cookie file's size is wrong
         except stem.connection.UnreadableCookieFile:
             # TODO: can we let Tor generate a cookie to fix this situation?
             print('Tor allows for authentication by reading it a cookie file, \
@@ -126,50 +151,66 @@ class TorBootstrap(QThread):
             time.sleep(10)
             return None
         except stem.connection.CookieAuthRejected:
-            return None  #if cookie authentication is attempted but the socket doesn't accept it
+            return None  # cookie authentication attempted but the socket does not accept it
         except stem.connection.IncorrectCookieValue:
-            return None  #if the cookie file's value is rejected
-        except:
+            return None  # the cookie file's value is rejected
+        except Exception:
             return None
 
         return tor_controller
 
     def run(self):
+        """Thread body: connect to Tor, drive bootstrap, emit (phase, percent)."""
+        import stem
         self.tor_controller = self.connect_to_control_port()
-        '''if DisableNetwork is 1, then toggle it to 0
-        because we really want Tor connect to the network'''
+        ## If DisableNetwork is 1, toggle it to 0 -- we want Tor to connect to
+        ## the network.
 
-        if self.tor_controller == None:
+        if self.tor_controller is None:
             sys.stdout.write('Controller connection failed.\n')
             sys.stdout.flush()
-            sys.exit(1)
+            ## Return (end this QThread's run) rather than sys.exit(): an
+            ## unhandled SystemExit raised inside a QThread can abort the whole
+            ## application (the "window vanished" symptom), e.g. when Enable
+            ## network briefly restarts Tor and the controller is momentarily
+            ## unavailable.
+            return
 
         if self.tor_controller.get_conf('DisableNetwork') == '1':
             self.tor_controller.set_conf('DisableNetwork', '0')
             sys.stdout.write('Toggle DisableNetwork value to 0. Tor is now allowed to connect to the network.\n')
             sys.stdout.flush()
-            sys.exit(1)
+            ## Do not return here: fall through and monitor the bootstrap so the
+            ## caller (e.g. the wizard status page) receives progress/completion.
 
         bootstrap_percent = 0
         while bootstrap_percent < 100:
-            bootstrap_phase = ''
-            bootstrap_status = self.tor_controller.get_info('status/bootstrap-phase')
+            try:
+                bootstrap_status = self.tor_controller.get_info('status/bootstrap-phase')
+            except stem.ControllerError:
+                ## The controller dropped mid-bootstrap (e.g. Tor restarted, the
+                ## socket closed). Emit a failure phase and end the thread
+                ## cleanly, rather than letting the exception abort the QThread
+                ## with no final signal and the UI stuck on the last percent.
+                sys.stdout.write('Bootstrap monitoring: controller connection lost.\n')
+                sys.stdout.flush()
+                self.signal.emit('socket_error', 0)
+                return
 
             if bootstrap_status != self.previous_status:
-                bootstrap_percent = int(re.match('.* PROGRESS=([0-9]+).*', bootstrap_status).group(1))
-                bootstrap_tag = re.search(r'TAG=(.*) +SUMMARY', bootstrap_status).group(1)
-                ''' Use TAG= keyword for bootstrap_phase, according to:
-                https://gitweb.torproject.org/tor-launcher.git/plain/README-BOOTSTRAP
-                '''
-                if bootstrap_tag in self.tag_phase:
-                    bootstrap_phase = self.tag_phase[bootstrap_tag]
-                else:
-                    '''Use a static message to cover unknown bootstrap tag to avoid potential
-                    misleading/harmful info shown.'''
-                    bootstrap_phase = 'Unknown Bootstrap TAG. This is harmless. Please run this program from command line to view console output and report this.'
-                    sys.stdout.write('Unknown Bootstrap TAG. Full message is shown in the very next line:\n')
-                    sys.stdout.flush()
-                sys.stdout.write('{0}\n'.format(bootstrap_status))
+                ## TAG= keyword drives the phase, per
+                ## https://gitweb.torproject.org/tor-launcher.git/plain/README-BOOTSTRAP
+                parsed = parse_bootstrap_phase(bootstrap_status, self.tag_phase)
+                if parsed is None:
+                    ## Unexpected status line: record it and skip, rather than
+                    ## crashing the bootstrap thread on a None .group() call.
+                    self.previous_status = bootstrap_status
+                    time.sleep(0.2)
+                    continue
+                bootstrap_phase, bootstrap_percent = parsed
+                ## bootstrap_status is untrusted Tor output; sanitize before
+                ## writing it to the terminal.
+                sys.stdout.write('{0}\n'.format(sanitize_string(bootstrap_status)))
                 sys.stdout.flush()
                 self.previous_status = bootstrap_status
                 self.signal.emit(bootstrap_phase, bootstrap_percent)
@@ -180,6 +221,8 @@ class TorBootstrap(QThread):
 
 def main():
     app = QApplication(sys.argv)
-    thread = TorBootstrap()
+    ## TorBootstrap requires a parent QObject; None is a valid parentless
+    ## QThread (the GUI callers pass their widget).
+    thread = TorBootstrap(None)
     thread.start()
     app.exec_()

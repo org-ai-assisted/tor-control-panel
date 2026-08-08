@@ -13,23 +13,61 @@ Vcs-Git: https://github.com/Kicksecure/tor-control-panel.git
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 
-Package: tor-control-panel
+Package: tor-control-panel-common
 Architecture: all
 Depends: helper-scripts,
-         pkexec,
-         mate-polkit,
-         privleap,
          python3,
-         python3-ipy,
+         safe-rm,
+         ${misc:Depends}
+Recommends: privleap | tor-control-panel-pkexec
+Description: Tor control panel - GUI-independent config logic and helpers
+ The configuration logic shared by tor-control-panel and anon-connection-wizard,
+ with NO GUI (PyQt) dependency: torrc generation and parsing, DisableNetwork
+ handling, input validation, and the privilege runner. Ships the privileged
+ helpers that write the torrc, control the Tor service and make the torrc sane,
+ plus the default-bridge data.
+ .
+ The privileged helpers run via privleap's leaprun on Whonix / Kicksecure, or
+ via pkexec (the tor-control-panel-pkexec package) or passwordless sudo on plain
+ Debian; hence the escalators are Recommends, not hard dependencies.
+ .
+ Installing this package alone lets the Tor configuration code be used from the
+ command line, without pulling in PyQt. The graphical front-ends are in the
+ tor-control-panel package.
+
+Package: tor-control-panel-pkexec
+Architecture: all
+Depends: tor-control-panel-common (= ${binary:Version}),
+         polkitd,
+         pkexec,
+         ${misc:Depends}
+Recommends: mate-polkit
+Description: Tor control panel - pkexec/polkit privilege policies
+ The PolicyKit action files that let tor-control-panel escalate privilege via
+ pkexec on systems without privleap (plain Debian). Each action authorizes one
+ fixed, self-validating helper: control the tor@default service, stage the
+ torrc, make the torrc sane, and read the Tor log.
+ .
+ Not needed on Whonix / Kicksecure, where privleap is used instead.
+
+Package: tor-control-panel
+Architecture: all
+Depends: tor-control-panel-common (= ${binary:Version}),
+         python3,
          python3-pyqt5,
          python3-stem,
          python3-yaml,
          qtwayland5,
          ${misc:Depends}
+Recommends: privleap | tor-control-panel-pkexec,
+            mate-polkit,
+            obfs4proxy,
+            snowflake-client,
+            onioncircuits,
+            tor
 Breaks: anon-connection-wizard (<< 1:11.5-1)
 Replaces: anon-connection-wizard (<< 1:11.5-1)
 Provides: anon-connection-wizard
-Recommends: obfs4proxy, tor
 Description: Tor Control Graphical User Interfaces
  WARNING: Not (yet) a standalone ready to use outside of Whonix:
  .

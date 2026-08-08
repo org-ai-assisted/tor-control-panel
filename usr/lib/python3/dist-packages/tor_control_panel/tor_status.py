@@ -3,16 +3,34 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, re, subprocess, fcntl
+import os, re, fcntl
+
+from . import privilege
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
-    whonix=True
+    whonix = True
 else:
-    whonix=False
+    whonix = False
 
-## TODO: code duplication
-## Should use same variable as in anon_connection_wizard.py.
-torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+## The torrc drop-in directory is distro-dependent -- and it MUST be, because
+## Tor is confined and can only read its config from certain locations:
+##   * Whonix: /usr/local/etc/torrc.d -- where the anon-gw config already
+##     chains the %include and Tor is permitted to read.
+##   * plain Debian / Kicksecure: /etc/tor/torrc.d -- Debian ships an AppArmor
+##     profile (system_tor) that lets Tor read /etc/tor/** but NOT
+##     /usr/local/**, so a drop-in under /usr/local makes tor@default fail to
+##     start ("Error reading included configuration file or directory"). Do NOT
+##     unify these onto /usr/local: it is AppArmor-unreadable on Debian.
+## tor-config-sane adds the matching %include (stock /etc/tor/torrc has none;
+## Debian bug #866187). The privileged bash helpers (tor-config-sane,
+## acw-write-torrc) derive the same distro-aware path from the Whonix marker,
+## since the escalators (leaprun/pkexec/sudo) do not forward this value.
+if whonix:
+    torrc_dir = '/usr/local/etc/torrc.d'
+else:
+    torrc_dir = '/etc/tor/torrc.d'
+torrc_file_path = torrc_dir + '/40_tor_control_panel.conf'
+torrc_user_file_path = torrc_dir + '/50_user.conf'
 acw_comm_file_path = '/run/anon-connection-wizard/tor.conf'
 
 ## torrc options whose value is a credential. This module prints torrc content
@@ -42,132 +60,103 @@ def redact_credentials(content):
 
 
 def tor_status():
-    print('tor_status was called.')
-
-    # output = self.tor_enabled_check()  #subprocess.check_output('/usr/libexec/helper-scripts/tor_enabled_check')
-    # output = output.decode("UTF-8").strip()
-
+    """Return 'tor_enabled' or 'tor_disabled' from the torrc DisableNetwork setting."""
     def tor_enabled_check():
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r') as f:
-            content = f.readlines()
-            for line in content:
-                if 'DisableNetwork 1' in line:
-                    return False
-                elif 'DisableNetwork 0' in line:
-                    return True
+        ## Match the DisableNetwork directive itself (first token on a
+        ## non-comment line), not any substring -- a commented-out or partial
+        ## occurrence must not be mistaken for the active setting.
+        ##
+        ## On a plain Debian / Kicksecure system the torrc may be absent; Tor's
+        ## own default is DisableNetwork 0 (enabled), so report enabled rather
+        ## than crashing.
+        if not os.path.exists(torrc_file_path):
+            return True
+        with open(torrc_file_path, 'r', encoding='utf-8') as torrc_file:
+            for line in torrc_file:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue
+                parts = stripped.split()
+                if len(parts) >= 2 and parts[0] == 'DisableNetwork':
+                    if parts[1] == '1':
+                        return False
+                    if parts[1] == '0':
+                        return True
+        return None
 
     if tor_enabled_check():
-        print('tor_status status: tor_enabled')
         return 'tor_enabled'
     else:
-        print('tor_status status: tor_disabled')
         return 'tor_disabled'
 
-'''Unlike tor_status() function which only shows the current state of the anon_connection_wizard.conf,
-set_enabled() and set_disabled() function will try to repair the missing torrc or DisableNetwork line.
-This makes sense because when we call set_enabled() or set_disabled() we really want Tor to work.
+## Unlike tor_status(), which only shows the current state of the torrc,
+## set_enabled() and set_disabled() also repair a missing torrc / DisableNetwork
+## line, since when they are called we really want Tor to work. set_enabled()
+## returns a (error-type string, error-code int) tuple.
+##
+## set_enabled() guarantees: the torrc exists, its final DisableNetwork value is
+## 0, and Tor uses DisableNetwork 0.
+def _write_disable_network(value):
+    '''Rewrite the torrc so the DisableNetwork directive equals `value`.
 
-set_enabled() will return a tuple with two value: a string of error type and an int of error code.
-'''
-
-'''set_enabled() is specified as follows:
-set_enabled() will:
-1. guarantee the existence of 40_tor_control_panel.conf
-2. guarantee the final value of DisableNetwork is 0 in the file
-3. guarantee Tor uses DisableNetwork 0
-'''
-def set_enabled():
-    print('set_enabled was called.')
-
-    content = ''
-
-    # if os.path.exists(torrc_file_path):
-    with open(torrc_file_path, 'r', encoding='utf-8') as f:
-        content = f.readlines()
-
-    disable_network_found = False
-    for line in content:
-        if 'DisableNetwork' in line:
-            disable_network_found = True
-            break
-
-    if disable_network_found:
-        with open(torrc_file_path, 'r', encoding='utf-8') as f:
-            content = f.read().replace('DisableNetwork 1', 'DisableNetwork 0')
+    Only the real directive (first token on a non-comment line) is changed, so
+    a commented-out or partial 'DisableNetwork' occurrence is left alone; the
+    directive is appended if absent. The result is staged via the privileged
+    acw-write-torrc helper (write_to_temp_then_move). Shared by set_enabled()
+    and set_disabled().
+    '''
+    ## On plain Debian / Kicksecure the drop-in may not exist yet; set_enabled()
+    ## / set_disabled() are documented to repair a missing torrc, so treat an
+    ## absent file as empty and create it rather than raising FileNotFoundError.
+    if os.path.exists(torrc_file_path):
+        with open(torrc_file_path, 'r', encoding='utf-8') as torrc_file:
+            lines = torrc_file.read().split('\n')
     else:
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path,'r') as f:
-            content = f.read() + '\n' + 'DisableNetwork 0' + '\n'
-        # else:
-        #     content = 'DisableNetwork 0'
+        lines = []
 
-    write_to_temp_then_move(content)
+    found = False
+    for index, line in enumerate(lines):
+        if line.strip().startswith('#'):
+            continue
+        if line.strip().split()[:1] == ['DisableNetwork']:
+            ## Normalize every active directive (a duplicated torrc could carry
+            ## more than one), not just the first, so no conflicting value is
+            ## left behind.
+            lines[index] = 'DisableNetwork ' + value
+            found = True
+    if not found:
+        lines.append('DisableNetwork ' + value)
 
-    command = 'leaprun acw-tor-control-restart'
-    tor_status_code = subprocess.call(command, shell=True)
+    write_to_temp_then_move('\n'.join(lines))
 
+
+def set_enabled():
+    _write_disable_network('0')
+
+    tor_status_code = privilege.run('acw-tor-control-restart')
     if tor_status_code != 0:
         return 'cannot_connect', tor_status_code
 
     ## we have to reload to open /run/tor/control and create /run/tor/control.authcookie
-    command = 'leaprun acw-tor-control-reload'
-    subprocess.call(command, shell=True)
+    privilege.run('acw-tor-control-reload')
 
-    command = 'leaprun acw-tor-control-status'
-    tor_status_code = subprocess.call(command, shell=True)
-
+    tor_status_code = privilege.run('acw-tor-control-status')
     if tor_status_code != 0:
         return 'cannot_connect', tor_status_code
 
     return 'tor_enabled', tor_status_code
 
-'''set_disabled() is specified as follows:
-set_disabled() will:
-1. guarantee the existence of 40_tor_control_panel.conf
-2. guarantee the final value of DisableNetwork is 1 in the file
-3. guarantee Tor uses DisableNetwork 1
-'''
+## set_disabled() guarantees: the torrc exists, its final DisableNetwork value
+## is 1, and Tor uses DisableNetwork 1.
 def set_disabled():
-    print('set_disabled was called.')
+    _write_disable_network('1')
 
-    content = ''
-
-    # if os.path.exists(torrc_file_path):
-    with open(torrc_file_path, 'r',  encoding='utf-8') as f:
-        content = f.readlines()
-
-    disable_network_found = False
-    for line in content:
-        if 'DisableNetwork' in line:
-            disable_network_found = True
-            break
-
-    if disable_network_found:
-        with open(torrc_file_path, 'r', encoding='utf-8') as f:
-            content = f.read().replace('DisableNetwork 0', 'DisableNetwork 1')
-
-    else:
-        # if os.path.exists(torrc_file_path):
-        with open(torrc_file_path, 'r', encoding='utf-8') as f:
-            content = f.read() + '\n' + 'DisableNetwork 1' + '\n'
-        # else:
-        #     content = 'DisableNetwork 1' + '\n'
-
-    write_to_temp_then_move(content)
-
-    command = 'leaprun acw-tor-control-stop'
-    subprocess.call(command, shell=True)
+    privilege.run('acw-tor-control-stop')
 
     return 'tor_disabled'
 
 def write_to_temp_then_move(content):
-    print('before:')
-    cat(torrc_file_path)
-    cat(acw_comm_file_path)
-    print(f"content to write: '{redact_credentials(content)}'")
-
-    with open(acw_comm_file_path, 'w') as comm_file:
+    with open(acw_comm_file_path, 'w', encoding='utf-8') as comm_file:
         ## Using flock here prevents another anon-connection-wizard process
         ## from trying to write to the file until acw-write-torrc is finished
         ## processing it.
@@ -175,23 +164,31 @@ def write_to_temp_then_move(content):
         comm_file.write(content)
         ## No need to unlock, acw-write-torrc deletes the original file.
 
-    print('after 1:')
-    cat(acw_comm_file_path)
+    privilege.check_run('acw-write-torrc')
 
-    command = ['leaprun', 'acw-write-torrc']
-    print('tor_status.py: executing:', ' '.join(command))
-    subprocess.check_call(command)
+def user_in_debian_tor_group():
+    """True if the current user is a member of the debian-tor group.
 
-    print('after 2:')
+    Checks /etc/group (not the running process's groups), because on plain
+    Debian the tor control socket + cookie are group-accessible to debian-tor
+    and the GUI needs to know whether the account has been granted access --
+    even before the user has logged out and back in for it to take effect.
+    """
+    import grp
+    import getpass
+    try:
+        return getpass.getuser() in grp.getgrnam('debian-tor').gr_mem
+    except KeyError:
+        return False
 
-    cat(torrc_file_path)
 
 def cat(filename):
+    """Print the contents of `filename` (debug helper)."""
     print(f"cat filename: '{filename}'")
     if not os.path.exists(filename):
         print(f"File did not exist: '{filename}'")
         return
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         content = file.read()
         if not content:
             print(f"File is empty: '{filename}'")
