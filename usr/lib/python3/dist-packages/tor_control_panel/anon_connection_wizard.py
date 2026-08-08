@@ -14,6 +14,7 @@ from guimessages.translations import _translations
 from sanitize_string.sanitize_string_lib import sanitize_string
 
 from . import tor_status, privilege, tor_bootstrap, torrc_gen, info, info_gui, validators
+from .command_thread import run_async, run_keeping_ui_alive
 from .tor_status import cat, write_to_temp_then_move
 
 
@@ -884,6 +885,28 @@ class AnonConnectionWizard(QWizard):
 
         torrc_gen.gen_torrc(args)
 
+    def _restore_func(self):
+        """The call that puts Tor back as it was, or None if nothing to do.
+
+        set_enabled() runs three blocking privileged calls and set_disabled()
+        one; under pkexec that span includes the authentication prompt. Neither
+        may run in a clicked slot directly.
+        """
+        if Common.init_tor_status == 'tor_enabled':
+            return tor_status.set_enabled
+        if Common.init_tor_status == 'tor_disabled':
+            return tor_status.set_disabled
+        return None
+
+    def _set_navigation_enabled(self, enabled):
+        ## A restore is privileged and must not be started twice, so the
+        ## buttons that could re-enter it are disabled while one is running.
+        ## This also covers run_keeping_ui_alive's nested event loop, which
+        ## keeps delivering input.
+        for which in (QWizard.BackButton, QWizard.NextButton,
+                      QWizard.CancelButton, QWizard.FinishButton):
+            self.button(which).setEnabled(enabled)
+
     def back_button_clicked(self):
         ## __init__ sets bootstrap_thread to None, so this is also the "no
         ## bootstrap was ever started" test -- no AttributeError to guard.
@@ -892,29 +915,49 @@ class AnonConnectionWizard(QWizard):
             self.bootstrap_thread = None
 
             ## Leaving the status page abandons the bootstrap; put Tor back the
-            ## way it was before the wizard started.
-            if Common.init_tor_status == 'tor_enabled':
-                tor_status.set_enabled()
-            elif Common.init_tor_status == 'tor_disabled':
-                tor_status.set_disabled()
+            ## way it was before the wizard started. The wizard stays open, so
+            ## this runs off-thread and re-enables navigation when it lands.
+            restore = self._restore_func()
+            if restore is not None:
+                self._set_navigation_enabled(False)
+                run_async(self, restore,
+                          lambda _result: self._after_back_restore())
+                return
 
+        self._after_back_restore()
+
+    def _after_back_restore(self):
+        self._set_navigation_enabled(True)
         self.bootstrap_done = False
         self.button(QWizard.FinishButton).hide()
         self.button(QWizard.CancelButton).show()
 
     def cancel_button_clicked(self):
-        if self.bootstrap_thread is not None:
-            self.bootstrap_thread.terminate()
-            self.bootstrap_thread = None
+        if self.bootstrap_thread is None:
+            ## The wizard was opened and cancelled without starting a
+            ## bootstrap; leave Tor untouched so an existing connection is not
+            ## disrupted.
+            return
 
-            ## A bootstrap ran and may have toggled DisableNetwork; restore the
-            ## status Tor had before the wizard started. If the wizard was
-            ## merely opened and cancelled without starting a bootstrap, leave
-            ## Tor untouched so an existing connection is not disrupted.
-            if Common.init_tor_status == 'tor_enabled':
-                tor_status.set_enabled()
-            elif Common.init_tor_status == 'tor_disabled':
-                tor_status.set_disabled()
+        self.bootstrap_thread.terminate()
+        self.bootstrap_thread = None
+
+        ## A bootstrap ran and may have toggled DisableNetwork; restore the
+        ## status Tor had before the wizard started.
+        restore = self._restore_func()
+        if restore is None:
+            return
+
+        ## Cancel closes the wizard, so this one must NOT be fire-and-forget:
+        ## the process can exit before a detached restore lands, leaving Tor in
+        ## neither the old nor the new state. Run it off-thread but wait, so
+        ## the window keeps repainting instead of freezing and the restore is
+        ## still complete by the time the dialog goes away.
+        self._set_navigation_enabled(False)
+        try:
+            run_keeping_ui_alive(self, restore)
+        finally:
+            self._set_navigation_enabled(True)
 
     def finish_button_clicked(self):
         # The True indicates the acw has finished successfully

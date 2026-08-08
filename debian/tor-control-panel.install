@@ -16,6 +16,7 @@ usr/lib/python3/dist-packages/tor_control_panel/tor_control_panel.py
 usr/lib/python3/dist-packages/tor_control_panel/anon_connection_wizard.py
 usr/lib/python3/dist-packages/tor_control_panel/restart_tor_gui.py
 usr/lib/python3/dist-packages/tor_control_panel/tor_bootstrap.py
+usr/lib/python3/dist-packages/tor_control_panel/command_thread.py
 usr/lib/python3/dist-packages/tor_control_panel/info_gui.py
 
 usr/share/anon-connection-wizard/advancedsettings.ico

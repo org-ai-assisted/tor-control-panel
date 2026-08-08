@@ -17,6 +17,7 @@ import os
 from sanitize_string.sanitize_string_lib import sanitize_string
 
 from . import tor_status, tor_bootstrap, torrc_gen, info, info_gui, validators, privilege
+from .command_thread import run_async as _run_async, wait_for_commands
 
 
 def ensure_debian_tor_group_access(parent):
@@ -63,25 +64,6 @@ def ensure_debian_tor_group_access(parent):
             parent, 'Could not grant access',
             "Adding your account to the 'debian-tor' group failed. You can do "
             'it manually:\n\n    sudo adduser ' + current_user + ' debian-tor')
-
-
-class CommandThread(QtCore.QThread):
-    ## Runs a blocking privileged / subprocess operation (e.g. Enable network's
-    ## leaprun calls) off the GUI thread so the UI stays responsive. The callable
-    ## must NOT touch Qt widgets -- do any UI work in the `done` slot, which fires
-    ## on the GUI thread.
-    done = QtCore.pyqtSignal(object)
-
-    def __init__(self, parent, func):
-        super().__init__(parent)
-        self._func = func
-
-    def run(self):
-        try:
-            result = self._func()
-        except Exception:
-            result = None
-        self.done.emit(result)
 
 
 class TorControlPanel(QDialog):
@@ -588,15 +570,25 @@ class TorControlPanel(QDialog):
         ## Run a blocking privileged operation off the GUI thread so the window
         ## does not freeze (e.g. Enable network's leaprun restart/reload/status).
         ## on_done(result) runs back on the GUI thread when func returns.
-        thread = CommandThread(self, func)
-        if not hasattr(self, '_command_threads'):
-            ## Keep a strong reference so a running QThread is not GC'd.
-            self._command_threads = set()
-        self._command_threads.add(thread)
-        thread.done.connect(on_done)
-        thread.finished.connect(lambda: self._command_threads.discard(thread))
-        thread.finished.connect(thread.deleteLater)
-        thread.start()
+        return _run_async(self, func, on_done)
+
+    def privileged_argv(self, action, *args):
+        """argv for a privileged helper, or None after telling the user why.
+
+        Every GUI ACTION goes through this. privilege.command() raises
+        NoPrivilegeMethod when leaprun, pkexec and passwordless sudo are all
+        absent, and an unguarded call raises straight out of a clicked slot as
+        a traceback instead of a message. Centralised so a call site added
+        later cannot quietly reintroduce that.
+        """
+        try:
+            return privilege.command(action, *args)
+        except privilege.NoPrivilegeMethod:
+            QMessageBox.critical(
+                self, 'No privilege escalation method',
+                'This action needs administrator rights, but none of '
+                'privleap, pkexec or passwordless sudo is available.')
+            return None
 
     def _after_enable_network(self):
         ## GUI-thread continuation after set_enabled() finished off-thread.
@@ -952,25 +944,52 @@ class TorControlPanel(QDialog):
             self.stop_bootstrap_thread()
         ## if running restart tor directly stem returns
         ## bootstrap_percent 100 or a socket error, randomly.
-        self.stop_tor()
-        self.restart_button.setEnabled(False)
+        ## The restart has to wait for the stop to finish, so it continues in
+        ## the completion slot rather than on the next line.
+        self.stop_tor(on_done=self._after_stop_for_restart)
 
+    def _after_stop_for_restart(self):
+        ## GUI-thread continuation, once Tor has actually stopped.
+        self.restart_button.setEnabled(False)
+        argv = self.privileged_argv('acw-tor-control-restart')
+        if argv is None:
+            return
         ## Fire-and-forget: bootstrap tracking below reflects the restart.
-        Popen(privilege.command('acw-tor-control-restart'))
+        Popen(argv)
         self.start_bootstrap()
 
-    def stop_tor(self):
+    def stop_tor(self, on_done=None):
+        """Stop Tor off the GUI thread; continue in `on_done` when it is down.
+
+        The wait() this replaces ran in the clicked slot, so the window stopped
+        repainting for the whole stop -- and under pkexec for the authentication
+        prompt too. It cannot simply be dropped: refresh() decides the panel's
+        state from whether Tor's pid file still exists, so it has to run after
+        the stop completes, not beside it.
+        """
         self.restart_button.setEnabled(True)
         if not self.bootstrap_done:
             self.bootstrap_progress.hide()
             self.stop_bootstrap_thread()
-        stop_proc = Popen(privilege.command('acw-tor-control-stop'))
-        stop_proc.wait()
-        self.refresh(True)
+
+        argv = self.privileged_argv('acw-tor-control-stop')
+        if argv is None:
+            return
+
+        def _finished(_result):
+            self.refresh(True)
+            if on_done is not None:
+                on_done()
+
+        self.run_async(lambda: Popen(argv).wait(), _finished)
 
     def quit(self):
         if not self.bootstrap_done:
             self.stop_bootstrap_thread()
+        ## Stop/restart hand their privileged work to a worker thread, so exiting
+        ## right after clicking Stop could otherwise tear the window down with the
+        ## operation still in flight.
+        wait_for_commands(self)
         self.accept()
 
 
