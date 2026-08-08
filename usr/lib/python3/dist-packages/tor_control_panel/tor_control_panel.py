@@ -769,25 +769,20 @@ class TorControlPanel(QDialog):
 
         else:
             if not tor_is_running:
+                self.bridges_combo.setItemText(7, 'Disable network')
                 self.tor_status = 'stopped'
                 tor_state = False
-                self.bridges_combo.removeItem(8)
-                self.bridges_combo.addItem('Disable network')
 
             if not tor_is_enabled:
+                self.bridges_combo.setItemText(7,  'Enable network')
                 if tor_is_running:
                     self.tor_status = 'disabled-running'
                     tor_state = True
-                    self.bridges_combo.removeItem(8)
-                    self.bridges_combo.addItem('Enable network')
-
 
                 elif not tor_is_running:
+                    self.bridges_combo.setItemText(7,  'Enable network')
                     self.tor_status = 'disabled'
                     tor_state = False
-                    self.bridges_combo.removeItem(8)
-                    self.bridges_combo.addItem('Enable network')
-
             self.message = self.tor_message[self.tor_status_list.index(
                 self.tor_status)]
 
