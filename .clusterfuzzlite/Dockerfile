@@ -27,10 +27,15 @@ FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:9dd557a4ba0e0cdfbeabc0bb115
 COPY . $SRC/tor-control-panel
 
 ## tor-control-panel's config logic imports sanitize_string from helper-scripts,
-## so make a helper-scripts checkout importable in the harnesses. Same-org
-## dependency, tracked at master (github-actions.md pinning policy).
-RUN git clone --depth=1 https://github.com/Kicksecure/helper-scripts \
-      $SRC/helper-scripts
+## so make a helper-scripts checkout importable in the harnesses.
+##
+## Pinned to an immutable commit, not a branch tip: this is a CROSS-org
+## dependency (Kicksecure, not org-ai-assisted) whose code is executed inside
+## the fuzzing image, so a later upstream push must not change what this repo
+## runs without a reviewed change here. Bump deliberately.
+RUN git clone https://github.com/Kicksecure/helper-scripts $SRC/helper-scripts \
+      && git -C $SRC/helper-scripts checkout --quiet \
+         3b3a8dd96d33d107fc9450a14172af94529e6f21
 
 COPY .clusterfuzzlite/build.sh $SRC/build.sh
 WORKDIR $SRC/tor-control-panel

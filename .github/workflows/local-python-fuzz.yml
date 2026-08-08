@@ -87,12 +87,13 @@ jobs:
         if: always()
         ## step-summary-emit lives in dist-ai, not developer-meta-files
         ## (moved by developer-meta-files ffe593e3, "Consume the shared CI
-        ## helpers from dist-ai"). Checkout @master keeps the org's single
-        ## source of truth.
+        ## helpers from dist-ai").
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: org-ai-assisted/dist-ai
-          ref: master
+          ## Immutable commit, not a branch tip: step-summary-emit is
+          ## executed by this job. Bump deliberately.
+          ref: bcd882d77fc430c0bd04e39836c111c5761986c6
           path: .github/dist-ai
           persist-credentials: false
 
@@ -157,7 +158,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: org-ai-assisted/dist-ai
-          ref: master
+          ## Immutable commit, not a branch tip: step-summary-emit is
+          ## executed by this job. Bump deliberately.
+          ref: bcd882d77fc430c0bd04e39836c111c5761986c6
           path: .github/dist-ai
           persist-credentials: false
 

@@ -121,7 +121,15 @@ class TorControlPanel(QDialog):
         self.tor_running_path = '/run/tor/tor.pid'
         self.torrc_file_path = torrc_gen.torrc_path()
 
-        self.journal_command = privilege.command('tor-control-panel-read-tor-default-log')
+        try:
+            self.journal_command = privilege.command(
+                'tor-control-panel-read-tor-default-log')
+        except privilege.NoPrivilegeMethod:
+            ## No escalation method on this system. The journal view is one
+            ## optional log source, so degrade to disabling it -- raising here
+            ## would abort __init__ and take the whole GUI down with a
+            ## traceback before the window ever appears.
+            self.journal_command = None
 
         ## Built from torrc_gen's canonical lists (prefixed with 'None') so the
         ## bridge/proxy type strings cannot drift out of sync with what
@@ -488,6 +496,9 @@ class TorControlPanel(QDialog):
     def newnym(self):
         import socket
         import stem
+        ## Explicit: 'import stem' alone does not bind the submodule, and the
+        ## except clause below names stem.connection.AuthenticationFailure.
+        import stem.connection
         from stem import Signal
         from stem.control import Controller
 
@@ -520,6 +531,14 @@ class TorControlPanel(QDialog):
             print('NEWNYM: cannot connect to the Tor control socket')
         except stem.UnsatisfiableRequest:
             print('NEWNYM: signal failed to be processed')
+        except stem.connection.AuthenticationFailure:
+            ## authenticate() raises AuthenticationFailure subclasses
+            ## (MissingAuthenticationInfo, UnreadableCookieFile,
+            ## IncorrectCookieValue), none of which are SocketError. On plain
+            ## Debian an account not yet in 'debian-tor' cannot read the
+            ## control cookie and lands here, so letting it escape the clicked
+            ## slot printed a traceback instead of the message.
+            print('NEWNYM: cannot authenticate to the Tor control socket')
 
     def onioncircuits(self):
         ## Launch the separate Onion Circuits viewer; Popen does not wait, so it
@@ -784,12 +803,20 @@ class TorControlPanel(QDialog):
             ## Dispatch on the button identity, not its label text, so a wording
             ## change to a radio cannot silently break log selection.
             if button is self.journal_button:
-                journal_proc = Popen(self.journal_command, stdout=PIPE, stderr=PIPE)
-                stdout, stderr = journal_proc.communicate()
-                ## Journal content is untrusted; decode defensively (a
-                ## malformed byte must not crash the log view) then strip
-                ## control characters, escape sequences and markup.
-                text = sanitize_string(stdout.decode(errors='replace'))
+                if self.journal_command is None:
+                    ## __init__ found no way to escalate, so there is no
+                    ## command to run; say so instead of raising on Popen(None).
+                    text = ('The systemd journal cannot be read: no privilege '
+                            'escalation method (privleap, pkexec or '
+                            'passwordless sudo) is available.')
+                else:
+                    journal_proc = Popen(self.journal_command, stdout=PIPE,
+                                         stderr=PIPE)
+                    stdout, stderr = journal_proc.communicate()
+                    ## Journal content is untrusted; decode defensively (a
+                    ## malformed byte must not crash the log view) then strip
+                    ## control characters, escape sequences and markup.
+                    text = sanitize_string(stdout.decode(errors='replace'))
 
             # Last n lines of the Tor log, HTML-formatted to highlight warnings
             # and errors.

@@ -80,7 +80,21 @@ class RestartTor(QWidget):
         Use subprocess.Popen instead of subprocess.call in order to catch
         possible errors from "restart tor" command.
         '''
-        argv = privilege.command('acw-tor-control-restart')
+        try:
+            argv = privilege.command('acw-tor-control-restart')
+        except privilege.NoPrivilegeMethod:
+            ## Nothing can restart Tor on this system. Report it the same way a
+            ## failed restart is reported, rather than letting the exception
+            ## escape and abort the widget with a traceback.
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Critical)
+            box.setWindowTitle('Restart Tor')
+            box.setText('Cannot restart Tor: no privilege escalation method '
+                        '(privleap, pkexec or passwordless sudo) is '
+                        'available.')
+            box.exec_()
+            sys.exit(1)
+
         command = Popen(argv, stdout=PIPE, stderr=PIPE)
         stdout, stderr = command.communicate()
 

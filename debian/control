@@ -15,7 +15,11 @@ Rules-Requires-Root: no
 
 Package: tor-control-panel-common
 Architecture: all
-Depends: helper-scripts,
+## bash (>= 4.4): the privileged helpers and the libexec wrappers open with
+## 'shopt -s inherit_errexit', which does not exist before 4.4 -- an older
+## /bin/bash fails in the preamble instead of running the script.
+Depends: bash (>= 4.4),
+         helper-scripts,
          python3,
          safe-rm,
          ${misc:Depends}

@@ -78,6 +78,12 @@ fi
 ## cannot be a planted symlink.
 printf '%s\n' "${contents}" > "${torrc_file_path}"
 
+## Drop the staged copy. tor_status.write_to_temp_then_move() documents that
+## this helper removes it, and leaving it behind parks the torrc -- proxy
+## credentials included -- in a mode-0666 file under a world-readable /run
+## directory until the next write happens to overwrite it.
+safe-rm --force -- "${acw_comm_file_path}"
+
 set -x
 
 ## Set 40_tor_control_panel.conf to 0644: root writes, everyone reads, no normal

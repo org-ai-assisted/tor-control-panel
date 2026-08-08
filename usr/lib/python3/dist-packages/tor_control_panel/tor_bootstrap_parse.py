@@ -29,11 +29,18 @@ def parse_bootstrap_phase(status_line, tag_phase):
     .group()). The SUMMARY fallback is sanitized, since it is untrusted and is
     shown in the GUI.
     """
-    progress_match = re.match('.* PROGRESS=([0-9]+).*', status_line)
-    tag_match = re.search(r'TAG=(.*) +SUMMARY', status_line)
+    ## Non-greedy, and clamped. Greedy '.*' took the LAST match in the line, so
+    ## text inside SUMMARY="..." -- which is attacker-influenced content Tor
+    ## echoes back -- could supply PROGRESS, or make TAG swallow everything up
+    ## to a 'SUMMARY' appearing inside the summary text. An unclamped percent
+    ## was worse: PROGRESS=999 ends tor_bootstrap's 'while percent < 100' loop
+    ## without ever reaching the ==100 completion branch, so the thread exits
+    ## and the wizard sits at 'Bootstrapping...' forever.
+    progress_match = re.match('.*? PROGRESS=([0-9]+)', status_line)
+    tag_match = re.search(r'TAG=(.*?) +SUMMARY', status_line)
     if not (progress_match and tag_match):
         return None
-    percent = int(progress_match.group(1))
+    percent = max(0, min(100, int(progress_match.group(1))))
     tag = tag_match.group(1)
     if tag in tag_phase:
         phase = tag_phase[tag]

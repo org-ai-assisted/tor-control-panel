@@ -86,7 +86,12 @@ def tor_status():
                         return False
                     if parts[1] == '0':
                         return True
-        return None
+        ## Present but carrying no active DisableNetwork directive is the same
+        ## situation as the missing-file branch above: Tor applies its own
+        ## default of DisableNetwork 0. Returning None here reported
+        ## 'tor_disabled' for a Tor that is running with the network enabled,
+        ## which made refresh() label the toggle 'Enable network'.
+        return True
 
     if tor_enabled_check():
         return 'tor_enabled'
