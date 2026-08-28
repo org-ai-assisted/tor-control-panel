@@ -11,6 +11,7 @@ set -o pipefail
 set -o errtrace
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 true "$0: START"
 
@@ -86,8 +87,18 @@ safe-rm --force -- "${acw_comm_file_path}"
 
 set -x
 
-## Set 40_tor_control_panel.conf to 0644: root writes, everyone reads, no normal
-## user can edit it.
-chmod --verbose 644 -- "${torrc_file_path}"
+## 40_tor_control_panel.conf carries proxy credentials (Socks5ProxyPassword,
+## HTTPSProxyAuthenticator), so unlike the stock 0644 torrc it must NOT be
+## world-readable -- otherwise any local user reads the cleartext proxy
+## password, defeating the redaction this helper and tor_status take pains to
+## do everywhere else. Tor parses the config as root at startup but RE-READS it
+## as debian-tor on reload (SIGHUP: 'User debian-tor' in
+## tor-service-defaults-torrc), so debian-tor needs read access: root owner,
+## debian-tor group, 0640. chgrp only succeeds as root (production); the
+## unprivileged write-path test cannot change group, so it is best-effort while
+## the mode lockdown always applies.
+chmod --verbose 640 -- "${torrc_file_path}"
+chgrp --verbose debian-tor -- "${torrc_file_path}" \
+  || printf '%s\n' "$0: chgrp debian-tor failed (not root?); mode kept at 0640" >&2
 
 true "$0: END"
