@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -137,10 +137,13 @@ class TorBootstrap(QThread):
         bootstrap_percent = 0
         self.signal.emit(bootstrap_phase, bootstrap_percent)
 
+        ## from_socket_file() already opened the control socket and started
+        ## stem's reader thread, so every authentication-failure exit must
+        ## close the controller first. Without this a repeated Enable/Restart
+        ## on an account that cannot read the cookie leaks an fd + a stem thread
+        ## per attempt -- the NEWNYM path documents and guards the same leak.
         try:
             tor_controller.authenticate(self.control_cookie_path)
-        except stem.connection.IncorrectCookieSize:
-            return None  # TODO: the cookie file's size is wrong
         except stem.connection.UnreadableCookieFile:
             # TODO: can we let Tor generate a cookie to fix this situation?
             print('Tor allows for authentication by reading it a cookie file, \
@@ -148,13 +151,13 @@ class TorBootstrap(QThread):
             bootstrap_phase = 'cookie_authentication_failed'
             bootstrap_percent = 0
             self.signal.emit(bootstrap_phase, bootstrap_percent)
+            tor_controller.close()
             time.sleep(10)
             return None
-        except stem.connection.CookieAuthRejected:
-            return None  # cookie authentication attempted but the socket does not accept it
-        except stem.connection.IncorrectCookieValue:
-            return None  # the cookie file's value is rejected
         except Exception:
+            ## IncorrectCookieSize / CookieAuthRejected / IncorrectCookieValue
+            ## and any other authenticate() failure: give up, but close first.
+            tor_controller.close()
             return None
 
         return tor_controller
