@@ -1,0 +1,6 @@
+## Copyright (C) 2026 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## The polkit/pkexec privilege policies for the plain-Debian path.
+
+usr/share/polkit-1/actions/com.kicksecure.tor-control-panel.policy

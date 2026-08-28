@@ -3,44 +3,102 @@
 ## Copyright (C) 2023 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
+## Keep the command trace: it is this script's diagnostic output.
 set -x
-set -e
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 true "$0: START"
 
-acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
-torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+## Paths default to the real locations; the tests override them (via the
+## environment) to run against a throwaway root.
+[ -v acw_comm_file_path ] || acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
+[ -v whonix_marker ] || whonix_marker='/usr/share/anon-gw-base-files/gateway'
+## Distro-aware drop-in path (must match tor_status.torrc_file_path). Derived
+## from the Whonix marker rather than passed in, because the privilege
+## escalators (leaprun/pkexec/sudo) do not forward the environment. On plain
+## Debian the drop-in must live under /etc/tor (AppArmor system_tor forbids
+## /usr/local); on Whonix it is /usr/local/etc/torrc.d.
+if [ ! -v torrc_file_path ]; then
+   if [ -e "${whonix_marker}" ]; then
+      torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
+   else
+      torrc_file_path='/etc/tor/torrc.d/40_tor_control_panel.conf'
+   fi
+fi
+torrc_dir="$(dirname -- "${torrc_file_path}")"
 
-if ! test -f "$acw_comm_file_path" ; then
-  echo "$0: file '$acw_comm_file_path' is not a file!" >&2
+## Refuse a symlink source. The spool directory is world-writable, so without
+## this a local user could point tor.conf at a root-only file (e.g. /etc/shadow)
+## and have this root helper copy its content into the world-readable drop-in.
+## The directory's sticky bit plus fs.protected_symlinks already stops root from
+## following such a symlink; this is defence in depth for a system on which that
+## kernel hardening was disabled.
+if test -h "${acw_comm_file_path}" ; then
+  printf '%s\n' "$0: file '${acw_comm_file_path}' is a symlink; refusing!" >&2
   exit 1
 fi
 
-if ! test -r "$acw_comm_file_path" ; then
-  echo "$0: file '$acw_comm_file_path' is not readable!" >&2
+if ! test -f "${acw_comm_file_path}" ; then
+  printf '%s\n' "$0: file '${acw_comm_file_path}' is not a file!" >&2
   exit 1
 fi
 
-mkdir --parents --verbose -- '/usr/local/etc/torrc.d'
+if ! test -r "${acw_comm_file_path}" ; then
+  printf '%s\n' "$0: file '${acw_comm_file_path}' is not readable!" >&2
+  exit 1
+fi
 
-contents="$(cat -- "$acw_comm_file_path")"
+mkdir --parents --verbose -- "${torrc_dir}"
+
+## Trace the control flow, never the torrc content. xtrace prints every
+## command with its variables FULLY EXPANDED, so leaving it on across the read
+## and the write dumps the whole torrc -- proxy credentials included -- to
+## stderr. This helper runs as root and its stderr is captured by the journal,
+## which is exactly the disclosure tor_status.redact_credentials() exists to
+## prevent on the Python side.
+set +x
+
+contents="$(cat -- "${acw_comm_file_path}")"
 ## Sanity test.
-if [ "$contents" = "" ]; then
-  echo "$0: file '$acw_comm_file_path' is empty!" >&2
+if [ "${contents}" = "" ]; then
+  set -x
+  printf '%s\n' "$0: file '${acw_comm_file_path}' is empty!" >&2
   exit 1
 fi
 
-## Do not move the original file, as the creator may have set a lock on it,
-## which could interfere with other users of the file. Copy and delete the
-## original instead.
-cp --verbose -- "$acw_comm_file_path" "$torrc_file_path"
+## Write the already-read content to the drop-in rather than re-reading the
+## source with cp. A single read closes the TOCTOU window between validating the
+## source and copying it, and never dereferences the source a second time. The
+## destination directory is root-owned and not world-writable, so the target
+## cannot be a planted symlink.
+printf '%s\n' "${contents}" > "${torrc_file_path}"
 
-## Disabled for debugging. And not important either.
-#safe-rm -- "$acw_comm_file_path"
+## Drop the staged copy. tor_status.write_to_temp_then_move() documents that
+## this helper removes it, and leaving it behind parks the torrc -- proxy
+## credentials included -- in a mode-0666 file under a world-readable /run
+## directory until the next write happens to overwrite it.
+safe-rm --force -- "${acw_comm_file_path}"
 
-## We set 40_tor_control_panel.conf to chmod 644
-## so that only root can write and read, others can only read,
-## which prevents the edit by normal user.
-chmod --verbose 644 -- "$torrc_file_path"
+set -x
+
+## 40_tor_control_panel.conf carries proxy credentials (Socks5ProxyPassword,
+## HTTPSProxyAuthenticator), so unlike the stock 0644 torrc it must NOT be
+## world-readable -- otherwise any local user reads the cleartext proxy
+## password, defeating the redaction this helper and tor_status take pains to
+## do everywhere else. Tor parses the config as root at startup but RE-READS it
+## as debian-tor on reload (SIGHUP: 'User debian-tor' in
+## tor-service-defaults-torrc), so debian-tor needs read access: root owner,
+## debian-tor group, 0640. chgrp only succeeds as root (production); the
+## unprivileged write-path test cannot change group, so it is best-effort while
+## the mode lockdown always applies.
+chmod --verbose 640 -- "${torrc_file_path}"
+chgrp --verbose debian-tor -- "${torrc_file_path}" \
+  || printf '%s\n' "$0: chgrp debian-tor failed (not root?); mode kept at 0640" >&2
 
 true "$0: END"

@@ -4,7 +4,22 @@
 ## AI-Assisted
 
 ## Per-repo parameters for developer-meta-files consumer workflows, read at
-## workflow runtime. Here: extra apt packages the dist-ai test suites need
-## (python3-pyqt5 for the offscreen PyQt5 GUI tests).
+## workflow runtime.
+##
+## The tor-control-panel dist-ai suite drives the PyQt5 GUI (python3-pyqt5)
+## under the Qt offscreen platform, and the merged anon-connection-wizard
+## imports guimessages (which parses YAML, hence python3-yaml) from
+## helper-scripts, so helper-scripts is also checked out and put on PYTHONPATH.
+## python3-stem lets the stem-gated control-port regression tests run (e.g. the
+## NEWNYM connect-failure fd-leak guard); the live-Tor suite additionally needs
+## the tor binary + network and so still skips here.
 dist-ai-tests:
-  apt-packages: "python3 python3-pytest python3-hypothesis python3-pyqt5"
+  apt-packages: "python3 python3-pytest python3-hypothesis python3-pyqt5 python3-yaml python3-stem safe-rm"
+  helper-scripts: true
+
+## Coverity static-analysis scan (reusable-coverity.yml). Python-only buildless
+## capture; needs the COVERITY_SCAN_TOKEN + COVERITY_SCAN_EMAIL repository
+## secrets (project token from scan.coverity.com).
+coverity:
+  project-name:    "Kicksecure/tor-control-panel"
+  canonical-repos: "Kicksecure/tor-control-panel,org-ai-assisted/tor-control-panel"

@@ -3,31 +3,26 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-import os, sys
 import subprocess
+import traceback
 
-if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
-    whonix = True
-else:
-    whonix = False
+from . import privilege
 
 def repair_torrc():
-    if not whonix:
-        ## Not implemented for non-Whonix yet.
-        return
-
+    ## tor-config-sane is distro-agnostic: on plain Debian it adds the %include
+    ## and control socket, on Whonix it just ensures the drop-in directory. So
+    ## it must run on every distro, not only Whonix.
     try:
-        command = ['leaprun', 'tor-config-sane']
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate()
-        if not p.returncode == 0:
-            print("ERROR: leaprun tor-config-sane Exit Code:", p.returncode)
-    except Exception as e:
-        error_msg = "tor-config-sane unexpected error: " + str(e)
-        print(error_msg)
+        command = privilege.command('tor-config-sane')
+        result = subprocess.run(command)
+        if result.returncode != 0:
+            print('ERROR:', ' '.join(command), 'exit code:', result.returncode)
+    except Exception:
+        print('tor-config-sane unexpected error:')
+        traceback.print_exc()
 
 def main():
     repair_torrc()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

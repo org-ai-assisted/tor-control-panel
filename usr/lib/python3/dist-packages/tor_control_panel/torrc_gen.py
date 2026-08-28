@@ -1,21 +1,21 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
 import json
-import os
-from subprocess import call
 from pathlib import Path
+
+from sanitize_string.sanitize_string_lib import sanitize_string
 
 from . import info
 from .edit_etc_resolv_conf import edit_etc_resolv_conf_add
-from .tor_status import write_to_temp_then_move
-
-whonix = os.path.exists('/usr/share/anon-gw-base-files/gateway')
-
-torrc_file_path = '/usr/local/etc/torrc.d/40_tor_control_panel.conf'
-torrc_user_file_path = '/usr/local/etc/torrc.d/50_user.conf'
+## The distro-aware drop-in path is defined once, in tor_status; import it here
+## rather than recomputing it, so the two modules can never disagree on where
+## the torrc lives (forum post #154: torrc.d is the sustainable target, and the
+## GUI -- unlike the package -- may write Tor's config directly).
+from .tor_status import (write_to_temp_then_move, torrc_dir,
+                         torrc_file_path, torrc_user_file_path)
 
 bridges_default_path = '/usr/share/anon-connection-wizard/bridges_default'
 
@@ -25,10 +25,16 @@ bridges_command = ['ClientTransportPlugin obfs4 exec /usr/bin/obfs4proxy\n',
                    'ClientTransportPlugin snowflake exec /usr/bin/snowflake-client\n',
                    'ClientTransportPlugin meek_lite exec /usr/bin/obfs4proxy\n']
 
-bridges_type = ['obfs4',
+bridge_types = ['obfs4',
                 'snowflake',
                 'meek',
                 'Custom bridges']
+
+## The bridge types that ship default bridges (i.e. everything but the
+## user-supplied 'Custom bridges'); the canonical source for both GUIs.
+default_bridge_types = ['obfs4',
+                        'snowflake',
+                        'meek']
 
 proxy_torrc = ['HTTPSProxy',
                'Socks4Proxy',
@@ -49,53 +55,151 @@ def torrc_path():
 def user_path():
     return torrc_user_file_path
 
+def torrc_include_directive():
+    '''The %include line the top-level torrc must contain for Tor to actually
+    read our drop-in directory.
+
+    Writing a drop-in is pointless if the main torrc does not pull in torrc_dir:
+    on plain Debian the stock /etc/tor/torrc has no such %include (Debian bug
+    #866187), and Tor is started with `-f /etc/tor/torrc`, so a drop-in we write
+    is silently IGNORED. On Whonix the anon-gw config supplies the include.
+    '''
+    return '%include ' + torrc_dir + '/*.conf'
+
+def main_torrc_includes_dropin(main_torrc_text):
+    '''True if `main_torrc_text` (the top-level torrc Tor is launched with)
+    has an active %include that pulls in our drop-in directory, so the
+    directives we write there are actually applied rather than ignored.
+
+    A commented-out %include does not count. The %include target may name the
+    directory, a glob inside it, or a specific file in it -- any of these means
+    Tor reads torrc_dir.
+    '''
+    for line in main_torrc_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('#'):
+            continue
+        parts = stripped.split(None, 1)
+        if parts and parts[0] == '%include' and len(parts) == 2:
+            if torrc_dir in parts[1]:
+                return True
+    return False
+
+def read_custom_bridge_lines(torrc_file):
+    '''Return the user's custom Bridge lines from `torrc_file` (the
+    '# Custom bridges are used' block), with the leading 'Bridge ' stripped and
+    each line sanitized.
+
+    Shared by both GUIs' "retrieve custom bridges" step. The torrc is untrusted
+    (the lines are user-pasted, round-trip through the file, and could be
+    tampered with) and they are appended into a rich-text QTextEdit, so strip
+    markup / control characters first -- the same treatment refresh_logs already
+    gives the torrc it displays.
+    '''
+    path = Path(torrc_file)
+    if not path.exists():
+        return []
+    ## errors='replace': the torrc is edited by other tools and by hand, so a
+    ## stray non-UTF-8 byte must degrade the parse, not raise UnicodeDecodeError
+    ## out of a reader the GUI calls on every refresh.
+    contents = path.read_text(encoding='utf-8', errors='replace')
+    if '# Custom' not in contents:
+        return []
+    bridge_lines = []
+    for line in contents.split('\n'):
+        ## Match the exact 'Bridge' directive token, not the prefix, so
+        ## unrelated directives that merely start with 'Bridge' (BridgeRelay,
+        ## BridgeDistribution, ...) are not mistaken for a custom bridge and
+        ## surfaced -- sliced and sanitized -- to the user.
+        tokens = line.strip().split(None, 1)
+        if len(tokens) == 2 and tokens[0] == 'Bridge':
+            bridge_lines.append(sanitize_string(tokens[1].strip()))
+    return bridge_lines
+
 def gen_torrc(args):
     bridge_type = str(args[0]) if len(args) > 0 else 'None'
-    print(f"DEBUG bridge_type from gen_torrc : {bridge_type} ")
     custom_bridges = str(args[1]) if len(args) > 1 else 'error-unknown-bridge-type'
-    print(f"DEBUG custom_bridges from gen_torrc : {custom_bridges}")
     proxy_type = str(args[2]) if len(args) > 2 else 'None'
 
     torrc_content = ['%s# %s\n' % (info.torrc_text(), torrc_user_file_path), 'DisableNetwork 0\n']
 
-    if not bridge_type == 'None':
-        if bridge_type in bridges_type:
+    if bridge_type != 'None':
+        if bridge_type in bridge_types:
             torrc_content.append(command_useBridges)
-            torrc_content.append(bridges_command[bridges_type.index(bridge_type)])
-            bridges = json.loads(open(bridges_default_path).read())
+            torrc_content.append(bridges_command[bridge_types.index(bridge_type)])
+            with open(bridges_default_path, encoding='utf-8') as bridges_file:
+                bridges = json.loads(bridges_file.read())
             for bridge in bridges['bridges'][bridge_type]:
                 if bridge.strip():
                     torrc_content.append('{0}\n'.format(bridge))
-    else:
-        torrc_content.append('')
 
-    if not custom_bridges == 'None':
-        print(f"DEBUG custom bridges / {custom_bridges}")
-        bridge = str(custom_bridges.split()[0]) #.lower()
+    ## Transports found in the custom bridges (used below to decide whether the
+    ## meek/snowflake DNS workaround is needed); stays empty for non-custom.
+    emitted_plugins = set()
+    if custom_bridges != 'None':
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
-        torrc_content.append(bridges_command[bridges_type.index(bridge)])
-        bridge_custom_list = custom_bridges.split('\n')
-        for bridge in bridge_custom_list:
+        ## Emit the matching ClientTransportPlugin line for every pluggable
+        ## transport present in the custom bridges. A Bridge line's first token
+        ## is the transport name ('obfs4', 'snowflake', 'meek_lite'); a plain
+        ## vanilla bridge (IP:port first) needs no plugin. Lines may mix
+        ## transports, so scan them all and de-duplicate the plugin lines.
+        transport_plugins = {
+            'obfs4': bridges_command[0],
+            'snowflake': bridges_command[1],
+            'meek_lite': bridges_command[2],
+        }
+        for bridge_line in custom_bridges.split('\n'):
+            tokens = bridge_line.split()
+            transport = tokens[0] if tokens else ''
+            if transport in transport_plugins and transport not in emitted_plugins:
+                torrc_content.append(transport_plugins[transport])
+                emitted_plugins.add(transport)
+        for bridge in custom_bridges.split('\n'):
             if bridge.strip():
                 torrc_content.append('Bridge {0}\n'.format(bridge))
-    else:
-        torrc_content.append('')
 
-    # Required for meek and snowflake only.
+    # Required for meek and snowflake only (Whonix; no-op elsewhere).
     # https://forums.whonix.org/t/censorship-circumvention-tor-pluggable-transports/2601/9
-    if bridge_type.startswith('meek') or bridge_type.startswith('snowflake'):
+    # Trigger for the default meek/snowflake bridge types AND for custom bridges
+    # whose transports are meek_lite / snowflake -- otherwise those custom
+    # bridges miss the DNS workaround and can fail to connect.
+    if (bridge_type.startswith('meek') or bridge_type.startswith('snowflake')
+            or emitted_plugins & {'meek_lite', 'snowflake'}):
         edit_etc_resolv_conf_add()
 
     if proxy_type != 'None' and len(args) >= 7:
-        proxy_ip = str(args[3])
-        proxy_port = str(args[4])
+        ## Normalize address/port the way the validators do: valid_ip() and
+        ## valid_port() check the STRIPPED form, so writing the raw edit text
+        ## would let a trailing newline/space corrupt the directive line.
+        proxy_ip = str(args[3]).strip()
+        proxy_port = str(args[4]).strip()
         proxy_username = str(args[5])
         proxy_password = str(args[6])
 
+        ## A torrc is line-oriented: a line break (or NUL) in any interpolated
+        ## proxy field ends the directive and starts a new one, so a crafted
+        ## value -- e.g. a SOCKS password pasted as 'x\nDisableNetwork 1' --
+        ## would inject arbitrary Tor directives. Refuse to emit an injectable
+        ## torrc. The GUIs validate first (validators.valid_ip / valid_port /
+        ## valid_proxy_credential); this is the last-resort guarantee for ANY
+        ## caller, so no front-end has to be trusted to remember it.
+        for field_name, field_value in (('proxy address', proxy_ip),
+                                        ('proxy port', proxy_port),
+                                        ('proxy username', proxy_username),
+                                        ('proxy password', proxy_password)):
+            if any(character in field_value
+                   for character in ('\n', '\r', '\x00')):
+                raise ValueError(
+                    'refusing to write torrc: {0} contains a line break or NUL '
+                    'byte (torrc injection)'.format(field_name))
+
         if proxy_type in proxies and proxy_ip and proxy_port:
+            ## Bracket an IPv6 literal so the '<addr>:<port>' form stays
+            ## unambiguous (Tor's *Proxy directives accept [ipv6]:port).
+            proxy_addr = '[{0}]'.format(proxy_ip) if ':' in proxy_ip else proxy_ip
             torrc_content.append('{0} {1}:{2}\n'.format(proxy_torrc[proxies.index(proxy_type)],
-                                                        proxy_ip, proxy_port))
+                                                        proxy_addr, proxy_port))
             if proxy_username:
                 if proxy_type == proxies[0]:
                     torrc_content.append('{0} {1}:{2}\n'.format(proxy_auth[0], proxy_username,
@@ -104,50 +208,65 @@ def gen_torrc(args):
                     torrc_content.append('{0} {1}\n'.format(proxy_auth[1], proxy_username))
                     if proxy_password:
                         torrc_content.append('{0} {1}\n'.format(proxy_auth[2], proxy_password))
-    else:
-        torrc_content.append('')
 
     final_torrc_content = ''.join(torrc_content)
     write_to_temp_then_move(final_torrc_content)
 
 def parse_torrc():
-    ## Make sure Torrc exists.
-    # command = 'leaprun tor-config-sane'
-    # call(command, shell=True)
-
-    # if os.path.exists(torrc_file_path):
+    ## On a plain Debian / Kicksecure system the tor-control-panel torrc may
+    ## not exist yet (no Whonix drop-in). Treat an absent file as "no
+    ## configuration" (defaults) rather than crashing the whole GUI.
     torrc_file_path_obj = Path(torrc_file_path)
-    torrc_file_contents = torrc_file_path_obj.read_text(encoding="utf-8")
-    torrc_file_lines = torrc_file_contents.split("\n")
-    use_bridge = 'UseBridges' in torrc_file_contents
-    use_custom_bridges = '# Custom briges are used' in torrc_file_contents
-    use_proxy = 'Proxy' in torrc_file_contents
+    if not torrc_file_path_obj.exists():
+        return ('None', 'None', '', '', '', '')
+    ## errors='replace' for the same reason as read_custom_bridge_lines().
+    torrc_file_contents = torrc_file_path_obj.read_text(
+        encoding='utf-8', errors='replace')
+    torrc_file_lines = torrc_file_contents.split('\n')
+    ## Detect features from active (non-comment) directives only; a commented
+    ## '# HTTPSProxy ...' or '# UseBridges' must not be mistaken for a setting
+    ## in effect (otherwise proxy_type would come back '' instead of 'None').
+    active_text = '\n'.join(line for line in torrc_file_lines
+                            if not line.strip().startswith('#'))
+    use_bridge = 'UseBridges' in active_text
+    ## The custom-bridges marker is deliberately a comment we write ourselves.
+    use_custom_bridges = '# Custom bridges are used' in torrc_file_contents
+    use_proxy = 'Proxy' in active_text
 
-    bridge_type = ''
+    ## Default to 'None' so use_bridge with no parseable Bridge line (and not
+    ## custom) does not leave bridge_type as an empty string.
+    bridge_type = 'None'
 
     if use_bridge:
         for line in torrc_file_lines:
-            if line.startswith('#'):
+            if line.strip().startswith('#'):
                 continue
 
-            if line.startswith('Bridge'):
+            if line.strip().startswith('Bridge'):
                 line = line.split()
                 # The bridge name is 'meek_lite', the bridge type is 'meek'
-                if line[1].startswith('meek_lite'):
-                    line[1] = 'meek'
-                bridge_type = line[1]
+                if len(line) >= 2:
+                    if line[1].startswith('meek_lite'):
+                        line[1] = 'meek'
+                    bridge_type = line[1]
 
-            if use_custom_bridges:
-                bridge_type = 'Custom bridges'
-    else:
-        bridge_type = 'None'
+        ## Custom bridges override any transport guessed from the Bridge lines;
+        ## decided once, not re-set on every loop iteration.
+        if use_custom_bridges:
+            bridge_type = 'Custom bridges'
 
     if use_proxy:
-        auth_check = False
-        proxy_type = proxy_ip = proxy_port = proxy_username = proxy_password = ''
+        ## Default 'None', not '': use_proxy is a substring test ('Proxy' in
+        ## active_text), so a torrc with an unmanaged directive that merely
+        ## contains 'Proxy' (e.g. the deprecated 'HTTPProxy', or a stray
+        ## authenticator line) sets use_proxy without matching a known proxy
+        ## directive below. Returning '' there made the wizard crash on
+        ## proxies.index('') ('' is not in list); 'None' is the safe default.
+        proxy_type = 'None'
+        proxy_ip = proxy_port = proxy_username = proxy_password = ''
         for line in torrc_file_lines:
             line = line.strip()
-            if not line:
+            if not line or line.startswith('#'):
                 continue
 
             parts = line.split()
@@ -155,36 +274,37 @@ def parse_torrc():
                 continue
 
             key, value = parts[0], parts[1]
+            ## Everything after the option name, kept intact. Tor reads a
+            ## credential as the REST of the line, so a username/password with a
+            ## space must round-trip (parts[1] alone dropped the remainder).
+            value_rest = line.split(None, 1)[1]
 
             if key in proxy_torrc:
                 proxy_type = proxies[proxy_torrc.index(key)]
-                if ':' in value:
-                    ip_port = value.split(':', 1)
-                    proxy_ip = ip_port[0]
-                    proxy_port = ip_port[1] if len(ip_port) > 1 else ''
+                if value.startswith('[') and ']' in value:
+                    ## Bracketed IPv6 literal: [addr]:port
+                    end = value.rfind(']')
+                    proxy_ip = value[1:end]
+                    rest = value[end + 1:]
+                    proxy_port = rest[1:] if rest.startswith(':') else ''
+                elif ':' in value:
+                    ## ':' guaranteed present, so rsplit yields exactly two.
+                    proxy_ip, proxy_port = value.rsplit(':', 1)
                 continue
 
             if key == proxy_auth[0]:  # HTTPSProxyAuthenticator
-                auth_check = True
-                if ':' in value:
-                    user_pass = value.split(':', 1)
-                    proxy_username = user_pass[0]
-                    proxy_password = user_pass[1] if len(user_pass) > 1 else ''
+                if ':' in value_rest:
+                    ## Tor splits user:pass on the FIRST ':'.
+                    proxy_username, proxy_password = value_rest.split(':', 1)
                 continue
 
             if key == proxy_auth[1]:  # Socks5ProxyUsername
-                auth_check = True
-                proxy_username = value
+                proxy_username = value_rest
                 continue
 
             if key == proxy_auth[2]:  # Socks5ProxyPassword
-                auth_check = True
-                proxy_password = value
+                proxy_password = value_rest
                 continue
-
-        if not auth_check:
-            proxy_username = ''
-            proxy_password = ''
 
     else:
         proxy_type = 'None'
@@ -194,5 +314,3 @@ def parse_torrc():
         proxy_password = ''
 
     return (bridge_type, proxy_type, proxy_ip, proxy_port, proxy_username, proxy_password)
-
-    return None

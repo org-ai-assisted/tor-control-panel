@@ -1,0 +1,20 @@
+#!/bin/bash
+
+## Copyright (C) 2026 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## AI-Assisted
+
+## Print the last lines of the Tor service log for tor-control-panel's Logs
+## tab. A fixed-command wrapper, so a single privleap action / polkit policy can
+## authorize exactly this (instead of authorizing journalctl with arbitrary
+## arguments).
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
+shopt -s inherit_errexit
+shopt -s shift_verbose
+
+/usr/bin/journalctl --no-pager --lines=200 --unit=tor@default.service

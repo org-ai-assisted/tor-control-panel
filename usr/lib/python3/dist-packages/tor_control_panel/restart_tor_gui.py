@@ -14,7 +14,7 @@ import os
 
 from subprocess import Popen, PIPE
 
-from tor_control_panel import tor_bootstrap, info
+from tor_control_panel import tor_bootstrap, info, privilege
 
 class RestartTor(QWidget):
     def __init__(self):
@@ -24,10 +24,12 @@ class RestartTor(QWidget):
         self.bootstrap_progress = QProgressBar(self)
         self.layout = QGridLayout()
 
-        self.setupUI()
+        self.setup_ui()
 
-    def setupUI(self):
-        self.setGeometry(300, 150, 450, 150)
+    def setup_ui(self):
+        ## Size only; the window is positioned by center() once shown, so a
+        ## hardcoded x/y here would just be overridden.
+        self.resize(450, 150)
         self.setWindowTitle('Restart Tor')
 
         self.text.setWordWrap(True)
@@ -63,10 +65,10 @@ class RestartTor(QWidget):
 
         if bootstrap_percent == 100:
             self.bootstrap_progress.setValue(100)
-            self.text.setText('<p><b>Tor bootstrapping done</b></p>Bootstrap phase: {0}'.format(bootstrap_phase))
+            self.text.setText(info.bootstrap_done_text(bootstrap_phase))
         else:
             self.bootstrap_progress.setValue(bootstrap_percent)
-            self.text.setText('<p><b>Bootstrapping Tor...</b></p>Bootstrap phase: {0}'.format(bootstrap_phase))
+            self.text.setText(info.bootstrapping_text(bootstrap_phase))
 
     def closeEvent(self, event):
         QtCore.QTimer.singleShot(2000, QApplication.instance().quit)
@@ -78,7 +80,22 @@ class RestartTor(QWidget):
         Use subprocess.Popen instead of subprocess.call in order to catch
         possible errors from "restart tor" command.
         '''
-        command = Popen(['leaprun', 'acw-tor-control-restart'], stdout=PIPE, stderr=PIPE)
+        try:
+            argv = privilege.command('acw-tor-control-restart')
+        except privilege.NoPrivilegeMethod:
+            ## Nothing can restart Tor on this system. Report it the same way a
+            ## failed restart is reported, rather than letting the exception
+            ## escape and abort the widget with a traceback.
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Critical)
+            box.setWindowTitle('Restart Tor')
+            box.setText('Cannot restart Tor: no privilege escalation method '
+                        '(privleap, pkexec or passwordless sudo) is '
+                        'available.')
+            box.exec_()
+            sys.exit(1)
+
+        command = Popen(argv, stdout=PIPE, stderr=PIPE)
         stdout, stderr = command.communicate()
 
         std_err = stderr.decode()
@@ -87,12 +104,12 @@ class RestartTor(QWidget):
         if not command_success:
             box = QMessageBox()
             box.setIcon(QMessageBox.Critical)
-            box.setWindowTitle("restart-tor - Error")
+            box.setWindowTitle('restart-tor - Error')
             text = (
-                "Command 'leaprun acw-tor-control-restart' failed.\n\n"
-                "stderr: " + std_err
+                "Command '" + ' '.join(argv) + "' failed.\n\n"
+                'stderr: ' + std_err
             )
-            print("ERROR: " + text)
+            print('ERROR: ' + text)
             box.setText(text)
             box.exec_()
             sys.exit(1)
@@ -124,5 +141,5 @@ def main():
     restart_tor = RestartTor()
     sys.exit(app.exec_())
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

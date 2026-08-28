@@ -1,0 +1,26 @@
+## Copyright (C) 2020 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+## The GUI-independent config logic + privileged helpers + data. NO PyQt.
+
+etc/privleap/conf.d/tor-control-panel.conf
+
+usr/lib/python3/dist-packages/tor_control_panel/__init__.py
+usr/lib/python3/dist-packages/tor_control_panel/info.py
+usr/lib/python3/dist-packages/tor_control_panel/torrc_gen.py
+usr/lib/python3/dist-packages/tor_control_panel/tor_status.py
+usr/lib/python3/dist-packages/tor_control_panel/tor_bootstrap_parse.py
+usr/lib/python3/dist-packages/tor_control_panel/validators.py
+usr/lib/python3/dist-packages/tor_control_panel/privilege.py
+usr/lib/python3/dist-packages/tor_control_panel/edit_etc_resolv_conf.py
+usr/lib/python3/dist-packages/tor_control_panel/repair_torrc.py
+
+usr/lib/tmpfiles.d/anon-connection-wizard.conf
+
+usr/libexec/anon-connection-wizard/acw-tor-control
+usr/libexec/anon-connection-wizard/acw-write-torrc
+usr/libexec/tor-control-panel/tor-config-sane
+usr/libexec/tor-control-panel/tcp-read-tor-log
+usr/libexec/tor-control-panel/tcp-add-tor-group
+
+usr/share/anon-connection-wizard/bridges_default
