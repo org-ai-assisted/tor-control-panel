@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -57,11 +57,39 @@ def valid_ip(address):
 
 
 def valid_port(port):
-    """True if `port` is an integer in the 1..65535 range."""
-    try:
-        return 1 <= int(port) <= 65535
-    except (ValueError, TypeError):
+    """True if `port` is an integer in the 1..65535 range.
+
+    Requires a clean decimal string. int() alone also accepts '1_0', '+80',
+    ' 80', and non-ASCII digits (fullwidth forms); any of those would be
+    written into the torrc verbatim by gen_torrc and rejected by Tor, so reject
+    them here.
+    """
+    port_text = str(port).strip()
+    if not re.fullmatch(r'[0-9]{1,5}', port_text):
         return False
+    return 1 <= int(port_text) <= 65535
+
+
+def valid_proxy_credential(value):
+    """True if `value` is safe to write as a proxy username/password value.
+
+    An empty value means "no credential" and is accepted; the caller decides
+    whether one is required. A non-empty credential must carry no control
+    character -- a line break would end the torrc directive and let the value
+    inject an arbitrary one (a pasted hostile SOCKS password
+    'x\\nDisableNetwork 1'), and no other control byte belongs in a SOCKS/HTTP
+    credential -- and must stay within Tor's 1..255-byte limit. Spaces and
+    ordinary Unicode are allowed: Tor reads the value as the rest of the line.
+    """
+    if value is None:
+        return False
+    value = str(value)
+    if value == '':
+        return True
+    if len(value.encode('utf-8')) > 255:
+        return False
+    return not any(ord(character) < 0x20 or 0x7f <= ord(character) <= 0x9f
+                   for character in value)
 
 
 def valid_custom_bridges(text):

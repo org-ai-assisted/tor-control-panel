@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -169,10 +169,30 @@ def gen_torrc(args):
         edit_etc_resolv_conf_add()
 
     if proxy_type != 'None' and len(args) >= 7:
-        proxy_ip = str(args[3])
-        proxy_port = str(args[4])
+        ## Normalize address/port the way the validators do: valid_ip() and
+        ## valid_port() check the STRIPPED form, so writing the raw edit text
+        ## would let a trailing newline/space corrupt the directive line.
+        proxy_ip = str(args[3]).strip()
+        proxy_port = str(args[4]).strip()
         proxy_username = str(args[5])
         proxy_password = str(args[6])
+
+        ## A torrc is line-oriented: a line break (or NUL) in any interpolated
+        ## proxy field ends the directive and starts a new one, so a crafted
+        ## value -- e.g. a SOCKS password pasted as 'x\nDisableNetwork 1' --
+        ## would inject arbitrary Tor directives. Refuse to emit an injectable
+        ## torrc. The GUIs validate first (validators.valid_ip / valid_port /
+        ## valid_proxy_credential); this is the last-resort guarantee for ANY
+        ## caller, so no front-end has to be trusted to remember it.
+        for field_name, field_value in (('proxy address', proxy_ip),
+                                        ('proxy port', proxy_port),
+                                        ('proxy username', proxy_username),
+                                        ('proxy password', proxy_password)):
+            if any(character in field_value
+                   for character in ('\n', '\r', '\x00')):
+                raise ValueError(
+                    'refusing to write torrc: {0} contains a line break or NUL '
+                    'byte (torrc injection)'.format(field_name))
 
         if proxy_type in proxies and proxy_ip and proxy_port:
             ## Bracket an IPv6 literal so the '<addr>:<port>' form stays
@@ -236,7 +256,14 @@ def parse_torrc():
             bridge_type = 'Custom bridges'
 
     if use_proxy:
-        proxy_type = proxy_ip = proxy_port = proxy_username = proxy_password = ''
+        ## Default 'None', not '': use_proxy is a substring test ('Proxy' in
+        ## active_text), so a torrc with an unmanaged directive that merely
+        ## contains 'Proxy' (e.g. the deprecated 'HTTPProxy', or a stray
+        ## authenticator line) sets use_proxy without matching a known proxy
+        ## directive below. Returning '' there made the wizard crash on
+        ## proxies.index('') ('' is not in list); 'None' is the safe default.
+        proxy_type = 'None'
+        proxy_ip = proxy_port = proxy_username = proxy_password = ''
         for line in torrc_file_lines:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -247,6 +274,10 @@ def parse_torrc():
                 continue
 
             key, value = parts[0], parts[1]
+            ## Everything after the option name, kept intact. Tor reads a
+            ## credential as the REST of the line, so a username/password with a
+            ## space must round-trip (parts[1] alone dropped the remainder).
+            value_rest = line.split(None, 1)[1]
 
             if key in proxy_torrc:
                 proxy_type = proxies[proxy_torrc.index(key)]
@@ -262,17 +293,17 @@ def parse_torrc():
                 continue
 
             if key == proxy_auth[0]:  # HTTPSProxyAuthenticator
-                if ':' in value:
-                    ## ':' guaranteed present, so split yields exactly two.
-                    proxy_username, proxy_password = value.split(':', 1)
+                if ':' in value_rest:
+                    ## Tor splits user:pass on the FIRST ':'.
+                    proxy_username, proxy_password = value_rest.split(':', 1)
                 continue
 
             if key == proxy_auth[1]:  # Socks5ProxyUsername
-                proxy_username = value
+                proxy_username = value_rest
                 continue
 
             if key == proxy_auth[2]:  # Socks5ProxyPassword
-                proxy_password = value
+                proxy_password = value_rest
                 continue
 
     else:
