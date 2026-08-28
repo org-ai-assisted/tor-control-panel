@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -631,7 +631,9 @@ class TorControlPanel(QDialog):
 
     def check_valid_proxy_settings(self):
         return (validators.valid_ip(self.proxy_ip_edit.text()) and
-                validators.valid_port(self.proxy_port_edit.text()))
+                validators.valid_port(self.proxy_port_edit.text()) and
+                validators.valid_proxy_credential(self.proxy_user_edit.text()) and
+                validators.valid_proxy_credential(self.proxy_pwd_edit.text()))
 
     def update_proxy_settings(self, proxy):
         if proxy == 'None':
@@ -707,16 +709,23 @@ class TorControlPanel(QDialog):
                 self.use_default_bridges = False
 
             elif self.bridges_combo.currentText() == 'Disable network':
-                ## Run the blocking leaprun off the GUI thread; finish the UI
-                ## update when it returns.
+                ## A network toggle is a TERMINAL action: launch it and stop.
+                ## Falling through re-read tor_status() BEFORE this async
+                ## set_disabled had rewritten the torrc, so the stale 'enabled'
+                ## read let set_torrc() run and immediately re-enable + restart
+                ## Tor -- the exact opposite of the click. The continuation
+                ## finishes the UI update when the worker returns.
                 self.run_async(tor_status.set_disabled,
                                lambda result: self.exit_configuration())
+                return
 
             elif self.bridges_combo.currentText() == 'Enable network':
-                ## set_enabled() runs several blocking leaprun calls; do them off
-                ## the GUI thread, then restart / show bootstrap on completion.
+                ## Terminal action, same reasoning as 'Disable network'. A proxy
+                ## or bridge change is a separate configure step; a toggle does
+                ## not carry one.
                 self.run_async(tor_status.set_enabled,
                                lambda result: self._after_enable_network())
+                return
 
             if self.proxy_combo.currentText() != 'None':
                 if self.check_valid_proxy_settings():
@@ -850,8 +859,13 @@ class TorControlPanel(QDialog):
                 ## show a note instead of crashing with FileNotFoundError.
                 if os.path.exists(torrc_path):
                     with open(torrc_path, encoding='utf-8') as torrc_file:
-                        ## torrc may contain user-supplied content; sanitize.
-                        text = sanitize_string(torrc_file.read())
+                        ## torrc may contain user-supplied content; redact proxy
+                        ## credentials (this is the copy-into-a-forum-post
+                        ## surface info.tor_stopped() points users at) BEFORE
+                        ## sanitizing markup/control for display. cat() on the
+                        ## stdout path already redacts the same content.
+                        text = sanitize_string(
+                            tor_status.redact_credentials(torrc_file.read()))
                 else:
                     text = 'No tor-control-panel torrc exists yet.'
 

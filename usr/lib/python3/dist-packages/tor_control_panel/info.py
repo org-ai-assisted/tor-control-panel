@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -96,9 +96,11 @@ anon-connection-wizard or restart Tor.</p>
 
 def invalid_ip_port():
     text = '''
-<p><b>ERROR: Please enter a valid address and port number.</b></p>
+<p><b>ERROR: Please enter valid proxy settings.</b></p>
 <p>The address should look like: 127.0.0.1 or localhost</p>
 <p>The port number should be an integer between 1 and 65535</p>
+<p>The username and password must not contain line breaks or control \
+characters and must be at most 255 bytes.</p>
 '''
     return text.strip()
 

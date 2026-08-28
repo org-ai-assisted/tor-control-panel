@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -su
+#!/usr/bin/python3 -Bsu
 
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
@@ -478,7 +478,9 @@ class ProxyWizardPage(QWizardPage):
 
     def check_valid_proxy_settings(self):
         return (validators.valid_ip(self.ip_edit.text()) and
-                validators.valid_port(self.port_edit.text()))
+                validators.valid_port(self.port_edit.text()) and
+                validators.valid_proxy_credential(self.user_edit.text()) and
+                validators.valid_proxy_credential(self.password_edit.text()))
 
     def nextId(self):
         if not Common.use_proxy:
