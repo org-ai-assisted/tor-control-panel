@@ -3,6 +3,11 @@
 ## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
+## TODO: This script assumes that only Tor Control Panel's configuration is
+## going to have options like 'DisableNetwork 0' in it. This might not be the
+## case though. We might want to scan all Tor configuration files when reading
+## config, but only write to our own config file.
+
 import os, re, fcntl
 
 from . import privilege
@@ -88,9 +93,8 @@ def tor_status():
                         return True
         ## Present but carrying no active DisableNetwork directive is the same
         ## situation as the missing-file branch above: Tor applies its own
-        ## default of DisableNetwork 0. Returning None here reported
-        ## 'tor_disabled' for a Tor that is running with the network enabled,
-        ## which made refresh() label the toggle 'Enable network'.
+        ## default of DisableNetwork 0 (enabled). (Upstream's naive reader
+        ## fell through to the same "assume enabled" fallback below.)
         return True
 
     if tor_enabled_check():

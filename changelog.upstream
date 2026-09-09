@@ -1,3 +1,22 @@
+commit 984088621f6766a6dae47767c64b3c84f16506ac
+Merge: 56e3194 b2f497d
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Sun Aug 30 01:11:32 2026 -0400
+
+    Merge remote-tracking branch 'ArrayBolt3/arraybolt3/trixie'
+
+commit b2f497dc4a81d66587bfeb432be65d5e2aea561a
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Thu Aug 27 20:00:15 2026 -0400
+
+    TODO, fix tor-status reporting that Tor is disabled when it isn't
+
+commit 56e319485be116e6c21b2facca404e3c65c3e406
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Wed Jul 8 18:15:08 2026 +0000
+
+    bumped changelog version
+
 commit c0b5ab55d49c39ab0e4a4b1b0161d147927023d4
 Merge: 2bac63d 433252e
 Author: Patrick Schleizer <adrelanos@whonix.org>
