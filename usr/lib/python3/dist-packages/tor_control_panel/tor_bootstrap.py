@@ -110,13 +110,17 @@ class TorBootstrap(QThread):
             return None  #if # TODO: the cookie file's size is wrong
         except stem.connection.UnreadableCookieFile:
             # TODO: can we let Tor generate a cookie to fix this situation?
+            ## Close BEFORE emitting: the GUI handles 'cookie_authentication_failed'
+            ## by calling bootstrap_thread.terminate(), which can abort this thread
+            ## during the sleep below -- so a close() placed after the emit/sleep
+            ## would never run, leaking the fd and stem's reader thread.
+            tor_controller.close()
             print('Tor allows for authentication by reading it a cookie file, \
             but we cannot read that file (probably due to permissions)')
             bootstrap_phase = 'cookie_authentication_failed'
             bootstrap_percent = 0
             self.signal.emit(bootstrap_phase, bootstrap_percent)
             time.sleep(10)
-            tor_controller.close()
             return None
         except stem.connection.CookieAuthRejected:
             tor_controller.close()
