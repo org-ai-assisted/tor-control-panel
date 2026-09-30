@@ -153,7 +153,7 @@ def no_controller():
 controller cannot be constructed. This is most likely because \
 you have a \"DisableNetwork 1\" line in a torrc file. \
 Please manually remove or comment out those lines, then run \
-anon-connection-wizard or restart Tor.
+anon-connection-wizard or restart Tor.</p>
 '''
     return text.strip()
 
