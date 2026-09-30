@@ -8,7 +8,7 @@
 ## case though. We might want to scan all Tor configuration files when reading
 ## config, but only write to our own config file.
 
-import os, subprocess, fcntl
+import os, re, subprocess, fcntl
 
 if os.path.exists('/usr/share/anon-gw-base-files/gateway'):
     whonix=True
@@ -168,6 +168,33 @@ def write_to_temp_then_move(content):
 
     cat(torrc_file_path)
 
+## Credential options whose VALUE must never reach the troubleshooting output.
+## Only the value is removed; the option name stays so the log still shows which
+## options were set.
+_credential_options = (
+    'Socks5ProxyUsername',
+    'Socks5ProxyPassword',
+    'HTTPSProxyAuthenticator',
+    'HashedControlPassword',
+)
+
+## Separator is [ \t]+, NOT \s+: \s matches a newline, so a credential option
+## left without a value would swallow the following directive and silently hide
+## it. Value is [^\n]+ (rest of the line). Case-insensitive; indentation and the
+## original option spelling are preserved via the captured groups.
+_credential_re = re.compile(
+    r'(?im)^([ \t]*)(' + '|'.join(_credential_options) + r')[ \t]+[^\n]+$')
+
+
+def redact_credentials(text):
+    """Replace the value of any proxy/control credential option with [REDACTED].
+
+    Keeps the option name and indentation; non-credential lines (e.g. the proxy
+    address) are left untouched so the output stays useful for troubleshooting.
+    """
+    return _credential_re.sub(r'\1\2 [REDACTED]', text)
+
+
 def cat(filename):
     print(f"cat filename: '{filename}'")
     if not os.path.exists(filename):
@@ -178,7 +205,8 @@ def cat(filename):
         if not content:
             print(f"File is empty: '{filename}'")
         else:
-            print(content, end='')  # content already has newlines
+            ## Never leak proxy/control credentials into troubleshooting output.
+            print(redact_credentials(content), end='')  # content already has newlines
     print("")
 
 ## Debugging: Executing this script directly.
