@@ -99,9 +99,14 @@ class TorBootstrap(QThread):
         bootstrap_percent = 0
         self.signal.emit(bootstrap_phase, bootstrap_percent)
 
+        ## from_socket_file() has already opened the control socket and started
+        ## stem's reader thread. On any authentication failure the controller
+        ## must be closed before returning None, or every Enable/Restart retry
+        ## leaks an fd and a thread.
         try:
             tor_controller.authenticate(self.control_cookie_path)
         except stem.connection.IncorrectCookieSize:
+            tor_controller.close()
             return None  #if # TODO: the cookie file's size is wrong
         except stem.connection.UnreadableCookieFile:
             # TODO: can we let Tor generate a cookie to fix this situation?
@@ -111,12 +116,16 @@ class TorBootstrap(QThread):
             bootstrap_percent = 0
             self.signal.emit(bootstrap_phase, bootstrap_percent)
             time.sleep(10)
+            tor_controller.close()
             return None
         except stem.connection.CookieAuthRejected:
+            tor_controller.close()
             return None  #if cookie authentication is attempted but the socket doesn't accept it
         except stem.connection.IncorrectCookieValue:
+            tor_controller.close()
             return None  #if the cookie file's value is rejected
         except:
+            tor_controller.close()
             return None
 
         return tor_controller
