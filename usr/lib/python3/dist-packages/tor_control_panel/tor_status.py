@@ -147,7 +147,8 @@ def write_to_temp_then_move(content):
     print("before:")
     cat(torrc_file_path)
     cat(acw_comm_file_path)
-    print(f"content to write: '{content}'")
+    ## Never leak proxy/control credentials into troubleshooting output.
+    print(f"content to write: '{redact_credentials(content)}'")
 
     with open(acw_comm_file_path, 'w') as comm_file:
         ## Using flock here prevents another anon-connection-wizard process
@@ -175,15 +176,24 @@ _credential_options = (
     'Socks5ProxyUsername',
     'Socks5ProxyPassword',
     'HTTPSProxyAuthenticator',
+    'HTTPProxyAuthenticator',
     'HashedControlPassword',
+    '__HashedControlSessionPassword',
 )
 
-## Separator is [ \t]+, NOT \s+: \s matches a newline, so a credential option
+## Separator is [ \t\v\f]+ -- Tor's own inline whitespace (space, tab, vertical
+## tab, form feed), NOT \s+: \s also matches a newline, so a credential option
 ## left without a value would swallow the following directive and silently hide
-## it. Value is [^\n]+ (rest of the line). Case-insensitive; indentation and the
-## original option spelling are preserved via the captured groups.
+## it. The prefix matches and preserves a leading '#' (a commented-out
+## credential still holds the secret) and a leading '+' (Tor's append-line
+## prefix), so '#Socks5ProxyPassword secret' and '+Socks5ProxyPassword secret'
+## are redacted too. Value is [^\n]+ (rest of the physical line).
+## Case-insensitive; indentation and the original spelling are preserved via the
+## captured groups. Scope: one physical directive line -- a value split across
+## lines with Tor's '\' continuation is out of scope (its follow-on lines are
+## not credential directives and are left as-is).
 _credential_re = re.compile(
-    r'(?im)^([ \t]*)(' + '|'.join(_credential_options) + r')[ \t]+[^\n]+$')
+    r'(?im)^([ \t]*#?[ \t]*\+?[ \t]*)(' + '|'.join(_credential_options) + r')[ \t\v\f]+[^\n]+$')
 
 
 def redact_credentials(text):
