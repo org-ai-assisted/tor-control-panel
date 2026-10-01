@@ -2,21 +2,19 @@
 # Consumed by codeql-review --baseline (auto-attached when this file is present);
 # format matches codeql-sarif-fingerprints.py / codeql-sarif-filter.py:
 #   <ruleId>\t<repo-relative-path>\t<primaryLocationLineHash>:<version>
-# Blank lines and '#' comments are ignored. Each entry is a reviewed false positive
-# or by-design finding -- no real credential leak. Rationale (drift-proof):
+# Blank lines and '#' comments are ignored.
 #
-# - torrc_gen.py gen_torrc() DEBUG prints log bridge_type (args[0]) and
-#   custom_bridges (args[1]); the proxy password is args[6]. CodeQL container-taint
-#   flags the whole args list and cannot distinguish the index, so these never emit
-#   the password.
+# ONE entry, a genuine false positive:
 # - tor_status.py write_to_temp_then_move() prints content via redact_credentials(),
 #   which masks every credential option (Socks5ProxyPassword, *ProxyAuthenticator,
 #   HashedControlPassword, ...) to [REDACTED] before the print; CodeQL does not
-#   recognize the sanitizer.
-# - tor_status.py comm_file.write() stores the Tor config IPC file, which must carry
-#   the plaintext proxy credential for Tor to use it; it cannot be masked. By design.
+#   recognize the sanitizer, so it reports a clear-text-logging finding here.
+#
+# NOT baselined (deliberately left reported, not suppressed):
+# - py/clear-text-storage-sensitive-data at tor_status.py comm_file.write(): the Tor
+#   config IPC file holds the plaintext proxy credential, but it is world-readable
+#   (tmpfiles 0666 in a 0777 dir) -- a real exposure, flagged for the permission fix,
+#   so it must keep surfacing until that is addressed.
+# The torrc_gen.py DEBUG prints that CodeQL also flagged were removed (they leaked
+# the custom bridge descriptor), so those findings no longer exist.
 py/clear-text-logging-sensitive-data	usr/lib/python3/dist-packages/tor_control_panel/tor_status.py	4b1cbb6710775250:1
-py/clear-text-logging-sensitive-data	usr/lib/python3/dist-packages/tor_control_panel/torrc_gen.py	80201563a3738637:1
-py/clear-text-logging-sensitive-data	usr/lib/python3/dist-packages/tor_control_panel/torrc_gen.py	8454f47076174f18:1
-py/clear-text-logging-sensitive-data	usr/lib/python3/dist-packages/tor_control_panel/torrc_gen.py	d7ff6484ed3321fd:1
-py/clear-text-storage-sensitive-data	usr/lib/python3/dist-packages/tor_control_panel/tor_status.py	2bea140629f22298:1
