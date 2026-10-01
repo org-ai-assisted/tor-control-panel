@@ -51,10 +51,12 @@ cp --verbose -- "${acw_comm_file_path}" "${torrc_file_path}"
 ## Delete the staging file; it holds the cleartext proxy credential.
 safe-rm -- "${acw_comm_file_path}"
 
-## The torrc holds the plaintext proxy credential and any custom bridge
-## descriptor, so restrict it: owner root (write), group debian-tor (Tor's own
-## user, read), no access for any other local account.
-chown --verbose root:debian-tor -- "${torrc_file_path}"
-chmod --verbose 640 -- "${torrc_file_path}"
+## chmod 644: owner root writes, everyone reads. This file is WORLD-READABLE and
+## holds the plaintext proxy credential and any custom bridge descriptor -- a
+## known local-disclosure exposure. Restricting it is not a one-line perm change:
+## both Tor (debian-tor) and the unprivileged GUI ('user', which parses the torrc
+## for current status) must keep read access, so it needs an ACL or a GUI-read
+## refactor -- deferred to the tor-control-panel rewrite.
+chmod --verbose 644 -- "${torrc_file_path}"
 
 true "${0}: END"
