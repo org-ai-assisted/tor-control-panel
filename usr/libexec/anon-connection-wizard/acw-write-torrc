@@ -16,6 +16,14 @@ true "${0}: START"
 acw_comm_file_path='/run/anon-connection-wizard/tor.conf'
 torrc_file_path='/usr/local/etc/torrc.d/40_tor_control_panel.conf'
 
+## Refuse a symlink at the staging path: the directory is root:user 0770 so no
+## other account can plant one, but reject it anyway rather than let this (root)
+## helper follow it and copy an arbitrary file into a readable torrc.
+if test -h "${acw_comm_file_path}"; then
+  printf '%s\n' "${0}: refusing: '${acw_comm_file_path}' is a symlink" >&2
+  exit 1
+fi
+
 if ! test -f "${acw_comm_file_path}"; then
   printf '%s\n' "${0}: file '${acw_comm_file_path}' is not a file!" >&2
   exit 1
@@ -43,9 +51,10 @@ cp --verbose -- "${acw_comm_file_path}" "${torrc_file_path}"
 ## Delete the staging file; it holds the cleartext proxy credential.
 safe-rm -- "${acw_comm_file_path}"
 
-## We set 40_tor_control_panel.conf to chmod 644
-## so that only root can write and read, others can only read,
-## which prevents the edit by normal user.
-chmod --verbose 644 -- "${torrc_file_path}"
+## The torrc holds the plaintext proxy credential and any custom bridge
+## descriptor, so restrict it: owner root (write), group debian-tor (Tor's own
+## user, read), no access for any other local account.
+chown --verbose root:debian-tor -- "${torrc_file_path}"
+chmod --verbose 640 -- "${torrc_file_path}"
 
 true "${0}: END"

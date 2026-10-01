@@ -150,13 +150,20 @@ def write_to_temp_then_move(content):
     ## Never leak proxy/control credentials into troubleshooting output.
     print(f"content to write: '{redact_credentials(content)}'")
 
-    with open(acw_comm_file_path, 'w') as comm_file:
-        ## Using flock here prevents another anon-connection-wizard process
-        ## from trying to write to the file until acw-write-torrc is finished
-        ## processing it.
+    ## Create the staging file owner-only (0600) and refuse to follow a symlink
+    ## (O_NOFOLLOW): it briefly holds the cleartext proxy credential (and any
+    ## custom bridge descriptor) before the privileged helper consumes it. The
+    ## directory is root:user 0770 (tmpfiles), so no other account can read it or
+    ## pre-plant a symlink; O_NOFOLLOW + explicit 0600 are defense in depth.
+    fd = os.open(acw_comm_file_path,
+                 os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, 'w') as comm_file:
+        ## flock prevents another anon-connection-wizard process from writing the
+        ## file until acw-write-torrc has processed it.
         fcntl.flock(comm_file, fcntl.LOCK_EX)
         comm_file.write(content)
-        ## No need to unlock, acw-write-torrc deletes the original file.
+        ## No need to unlock; acw-write-torrc deletes the original file.
 
     print("after 1:")
     cat(acw_comm_file_path)
@@ -169,9 +176,13 @@ def write_to_temp_then_move(content):
 
     cat(torrc_file_path)
 
-## Credential options whose VALUE must never reach the troubleshooting output.
-## Only the value is removed; the option name stays so the log still shows which
-## options were set.
+## Credential and privacy-sensitive options whose VALUE must never reach the
+## troubleshooting output. Only the value is removed; the option name stays so
+## the log still shows which options were set. 'Bridge' is included because a
+## custom bridge line is a private descriptor (address, fingerprint, cert) meant
+## to stay unlisted; the separator below requires inline whitespace after the
+## keyword, so it masks a real 'Bridge <descriptor>' line but never matches
+## 'UseBridges'/'BridgeRelay'.
 _credential_options = (
     'Socks5ProxyUsername',
     'Socks5ProxyPassword',
@@ -179,21 +190,22 @@ _credential_options = (
     'HTTPProxyAuthenticator',
     'HashedControlPassword',
     '__HashedControlSessionPassword',
+    'Bridge',
 )
 
 ## Separator is [ \t\v\f]+ -- Tor's own inline whitespace (space, tab, vertical
 ## tab, form feed), NOT \s+: \s also matches a newline, so a credential option
 ## left without a value would swallow the following directive and silently hide
-## it. The prefix matches and preserves a leading '#' (a commented-out
-## credential still holds the secret) and a leading '+' (Tor's append-line
-## prefix), so '#Socks5ProxyPassword secret' and '+Socks5ProxyPassword secret'
-## are redacted too. Value is [^\n]+ (rest of the physical line).
-## Case-insensitive; indentation and the original spelling are preserved via the
-## captured groups. Scope: one physical directive line -- a value split across
-## lines with Tor's '\' continuation is out of scope (its follow-on lines are
-## not credential directives and are left as-is).
+## it. The prefix matches and preserves ANY run of leading '#'/'+' with optional
+## inline whitespace, so a commented-out credential ('#...', '##...', '# #...'),
+## a Tor append-line prefix ('+...') and any combination are all redacted -- a
+## single-'#'-only prefix let '##Socks5ProxyPassword secret' leak through. Value
+## is [^\n]+ (rest of the physical line). Case-insensitive; indentation and the
+## original spelling are preserved via the captured groups. Scope: one physical
+## directive line -- a value split across lines with Tor's '\' continuation is
+## out of scope (its follow-on lines are not credential directives, left as-is).
 _credential_re = re.compile(
-    r'(?im)^([ \t]*#?[ \t]*\+?[ \t]*)(' + '|'.join(_credential_options) + r')[ \t\v\f]+[^\n]+$')
+    r'(?im)^([ \t]*(?:[#+][ \t]*)*)(' + '|'.join(_credential_options) + r')[ \t\v\f]+[^\n]+$')
 
 
 def redact_credentials(text):
