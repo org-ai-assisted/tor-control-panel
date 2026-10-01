@@ -51,9 +51,7 @@ def user_path():
 
 def gen_torrc(args):
     bridge_type = str(args[0]) if len(args) > 0 else 'None'
-    print(f"DEBUG bridge_type from gen_torrc : {bridge_type} ")
     custom_bridges = str(args[1]) if len(args) > 1 else 'error-unknown-bridge-type'
-    print(f"DEBUG custom_bridges from gen_torrc : {custom_bridges}")
     proxy_type = str(args[2]) if len(args) > 2 else 'None'
 
     torrc_content = ['%s# %s\n' % (info.torrc_text(), torrc_user_file_path), 'DisableNetwork 0\n']
@@ -70,7 +68,6 @@ def gen_torrc(args):
         torrc_content.append('')
 
     if not custom_bridges == 'None':
-        print(f"DEBUG custom bridges / {custom_bridges}")
         bridge = str(custom_bridges.split()[0]) #.lower()
         torrc_content.append('# Custom bridges are used\n')
         torrc_content.append(command_useBridges)
