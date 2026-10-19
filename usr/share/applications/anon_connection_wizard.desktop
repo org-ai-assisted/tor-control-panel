@@ -4,7 +4,7 @@
 [Desktop Entry]
 Type=Application
 Terminal=false
-Exec=/usr/libexec/anon-connection-wizard/anon-connection-wizard
+Exec=/usr/bin/anon-connection-wizard
 Name=Anon Connection Wizard
 GenericName=Anon Connection Wizard
 Comment=Tor Connection Configuration
@@ -13,4 +13,3 @@ Icon=/usr/share/anon-connection-wizard/advancedsettings.ico
 ## Because we need a wrapper to start it.
 X-KDE-StartupNotify=false
 Keywords=system;Whonix;setup;connection;Tor;Anon;
-X-Desktop-File-Install-Version=0.22

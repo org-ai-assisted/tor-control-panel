@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -Bsu
 
-## Copyright (C) 2018 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## Copyright (C) 2018 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
 ## Shell-invocation guard.
@@ -8,4 +8,3 @@
 
 from tor_control_panel import anon_connection_wizard
 anon_connection_wizard.main()
-print("INFO: End of Anon Connection Wizard.")
