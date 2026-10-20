@@ -11,23 +11,23 @@ shopt -s inherit_errexit
 shopt -s shift_verbose
 export LC_ALL=C
 
-true "$0: START"
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/lockfile.sh
+source "${HELPER_SCRIPTS_PATH:-}/usr/libexec/helper-scripts/lockfile.sh"
 
-## TODO: Rewrite this so that it:
-## * Creates a FIFO under /run/tor-control-panel, with a mode of 0700
-## * Chowns it to the calling user
-## * Reads from it, the client side will then write to it the Tor config file
-##   contents
-## * Plops the contents that are read into the Tor config file
-##
-## This will require adding a feature to privleap to allow programs run by
-## actions to tell what user triggered them.
+true "$0: START"
 
 tcp_comm_dir='/run/tor-control-panel'
 tcp_comm_fifo="${tcp_comm_dir}/tcp-write-torrc.fifo"
 local_torrc_d='/usr/local/etc/torrc.d'
 torrc_file_path="${local_torrc_d}/40_tor_control_panel.conf"
+torrc_temp_file_path="${torrc_file_path}.tcp-tmp"
 fifo_client_uid="${PRIVLEAP_CALLER_UID:-}"
+
+exithandler() {
+  safe-rm --force -- "${tcp_comm_fifo}"
+  safe-rm --force -- "${torrc_temp_file_path}"
+}
+trap exithandler EXIT
 
 if [ -z "${fifo_client_uid}" ]; then
   printf '%s\n' "$0: ERROR: Cannot get client UID!"
@@ -39,18 +39,21 @@ mkfifo --mode=0600 -- "${tcp_comm_fifo}" || exit 1
 chown -- "${fifo_client_uid}:root" "${tcp_comm_fifo}" || exit 1
 
 mkdir --parents --verbose -- "${local_torrc_d}"
+cat -- "${tcp_comm_fifo}" > "${torrc_temp_file_path}" &
+wait "$!"
 
-tor_conf_contents="$(cat -- "${tcp_comm_fifo}")"
-
-## Sanity test.
-if [ "${tor_conf_contents}" = "" ]; then
-  echo "$0: ERROR: No Tor configuration provided by client!" >&2
+if ! [ -s "${torrc_temp_file_path}" ]; then
+  printf '%s\n' "$0: ERROR: No Tor configuration provided by client!" >&2
   exit 1
 fi
+if ! unicode-show -- "${torrc_temp_file_path}" >/dev/null 2>&1 ; then
+  printf '%s\n' "$0: ERROR: Tor configuration contains potentially malicious Unicode!" >&2
+fi
+if ! validate_output="$(/usr/libexec/tor-control-panel/tcp-validate-torrc "${torrc_temp_file_path}" 2>&1)" ; then
+  printf '%s\n' "$0: ERROR: ${validate_output}"
+fi
 
-printf '%s\n' "${tor_conf_contents}" | tee -- "${torrc_file_path}" >/dev/null
-
-safe-rm -- "${tcp_comm_fifo}"
+mv -- "${torrc_temp_file_path}" "${torrc_file_path}"
 
 ## Default ownership may be too restrictive.
 chmod --verbose 644 -- "${torrc_file_path}"

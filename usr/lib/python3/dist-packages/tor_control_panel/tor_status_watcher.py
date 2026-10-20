@@ -88,6 +88,7 @@ class TcplTorMonitor(QObject):
                 self.tor_is_running = False
                 self.torActiveChanged.emit(False)
             if self.tor_controller is not None:
+                self.tor_controller.close()
                 self.tor_controller = None
             return
 
@@ -158,7 +159,9 @@ class TcplTorMonitor(QObject):
                 tor_controller_connected = True
                 break
             except Exception:
-                self.tor_controller = None
+                if self.tor_controller is not None:
+                    self.tor_controller.close()
+                    self.tor_controller = None
                 time.sleep(0.2)
 
         if not tor_controller_connected:

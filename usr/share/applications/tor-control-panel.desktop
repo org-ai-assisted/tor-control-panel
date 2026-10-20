@@ -7,6 +7,6 @@ Type=Application
 Comment=Tor Connection Configuration
 Exec=/usr/bin/tor-control-panel
 GenericName=Tor Control Panel
-Icon=/usr/share/tor-control-panel/onion.png
+Icon=/usr/share/tor-control-panel/icons/onion.png
 Keywords=system;Whonix;setup;connection;Tor;Anon;
 Name=Tor Control Panel

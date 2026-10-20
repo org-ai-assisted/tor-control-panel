@@ -35,7 +35,6 @@ from PyQt6.QtCore import (
     QUrl,
 )
 from PyQt6.QtGui import (
-    QCursor,
     QDesktopServices,
     QIcon,
     QTextCursor,
@@ -104,8 +103,8 @@ tcp_system_path: Path = Path(
 ## These variables are not part of tor_control_panel_lib.py because their
 ## content differs slightly between Anon Connection Wizard and Tor Control
 ## Panel.
-tcp_tor_censorship_help_text: str = """<p><b>Censorship Circumvention
-Help</b></p>
+tcp_tor_censorship_help_text: str = """\
+<p><b>Censorship Circumvention Help</b></p>
 
 <p>If you are unable to connect to the Tor network, your Internet provider or
 another agency could be blocking Tor. Tor bridges can usually be used to work
@@ -132,7 +131,9 @@ circumvention tool:</p>
 3. Input the tool's proxy details.<br>
 4. Configure "Accept".</blockquote>
 """
-tcp_proxy_help_text: str = """<p><b>Proxy Help</b></p>
+tcp_proxy_help_text: str = """\
+<p><b>Proxy Help</b></p>
+
 <p>In some situations, you may want to route your traffic through a proxy
 server before connecting to the Tor network. This is frequently useful when
 using third-party circumvention tools.</p>
@@ -156,9 +157,9 @@ port.</blockquote>
 The username and password to authenticate to the proxy server. These are
 usually not required.</blockquote>
 """
-tcp_custom_bridges_help_text: str = """<p>As an alternative to using the
-provided bridges, you can obtain a set of custom bridges using one of the
-following methods:</p>
+tcp_custom_bridges_help_text: str = """\
+<p>As an alternative to using the provided bridges, you can obtain a set of
+custom bridges using one of the following methods:</p>
 
 <p><b>1.</b> Use a web browser to visit:
 <a>https://bridges.torproject.org/options</a></p>
@@ -714,7 +715,7 @@ is clicked or when a new log or file is selected.</i>"""
 
         self.button_bar_layout: QHBoxLayout = QHBoxLayout()
         self.bridges_wiki_help_button: QPushButton = QPushButton(
-            QIcon(str(self.help_icon_path)), " Bridges Help (wiki)"
+            QIcon(str(self.help_icon_path)), " Bridges Help"
         )
         self.bridges_wiki_help_button.clicked.connect(
             functools.partial(
@@ -724,7 +725,7 @@ is clicked or when a new log or file is selected.</i>"""
         self.button_bar_layout.addWidget(self.bridges_wiki_help_button)
 
         self.tcp_wiki_help_button: QPushButton = QPushButton(
-            QIcon(str(self.help_icon_path)), " Tor Control Panel Help (wiki)"
+            QIcon(str(self.help_icon_path)), " Tor Control Panel Help"
         )
         self.tcp_wiki_help_button.clicked.connect(
             functools.partial(
@@ -786,7 +787,8 @@ is clicked or when a new log or file is selected.</i>"""
         QMessageBox.warning(
             None,
             tcp_window_title,
-            f"""<p>WARNING: Tor configuration could not be loaded! Details:</p>
+            f"""\
+<p>WARNING: Tor configuration could not be loaded! Details:</p>
 <blockquote><pre>{tmp_tor_conf_info}</pre></blockquote>""",
         )
         return copy.deepcopy(tcpl_blank_tor_conf_info)
@@ -818,6 +820,7 @@ is clicked or when a new log or file is selected.</i>"""
             self.bridges_type_combo_box.setCurrentText(
                 tcpl_bridge_type_none_str
             )
+            self.custom_bridges_text_edit.clear()
         else:
             if len(self.tor_conf_info.bridge_type_set) == 1:
                 bridge_type: str = list(self.tor_conf_info.bridge_type_set)[0]
@@ -1058,7 +1061,8 @@ is clicked or when a new log or file is selected.</i>"""
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                f"""<p>ERROR: Could not restart Tor! Details:</p>
+                f"""\
+<p>ERROR: Could not restart Tor! Details:</p>
 <blockquote><pre>{sanitize_string(tor_restart_log)}</pre></blockquote>""",
             )
         else:
@@ -1082,7 +1086,8 @@ is clicked or when a new log or file is selected.</i>"""
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                f"""<p>ERROR: Could not stop Tor! Details:</p>
+                f"""\
+<p>ERROR: Could not stop Tor! Details:</p>
 <blockquote><pre>{sanitize_string(tor_stop_log)}</pre></blockquote>""",
             )
 
@@ -1130,23 +1135,26 @@ is clicked or when a new log or file is selected.</i>"""
             return
         self.control_tab.setCurrentWidget(self.control_tab_main_page)
 
-        wait_cursor: QCursor = QCursor(Qt.CursorShape.WaitCursor)
-        QApplication.setOverrideCursor(wait_cursor)
-
         sync_config_ui_result: SyncConfigUiResult
+        sync_config_ui_msg: str | None
         bridge_line_list: list[str]
         if from_custom_bridges_page:
-            bridge_line_list = tcpl_bridge_lines_add_prefix(
+            bridge_line_list = (
                 self.custom_bridges_text_edit.toPlainText().split("\n")
             )
-            sync_config_ui_result = self.sync_config_ui_to_tor_conf_info(
-                bridge_line_list
+            ## Remove blank lines.
+            bridge_line_list = [x for x in bridge_line_list if x != ""]
+            sync_config_ui_result, sync_config_ui_msg = (
+                self.sync_config_ui_to_tor_conf_info(bridge_line_list)
             )
         else:
-            sync_config_ui_result = self.sync_config_ui_to_tor_conf_info()
+            sync_config_ui_result, sync_config_ui_msg = (
+                self.sync_config_ui_to_tor_conf_info()
+            )
             bridge_line_list = self.tor_conf_info.bridge_line_list
-        if not self.check_notify_sync_config_ui_result(sync_config_ui_result):
-            QApplication.restoreOverrideCursor()
+        if not self.check_notify_sync_config_ui_result(
+            sync_config_ui_result, sync_config_ui_msg
+        ):
             return
 
         try:
@@ -1156,8 +1164,8 @@ is clicked or when a new log or file is selected.</i>"""
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                f"""<p>ERROR: The Tor configuration file could not be written!
-Details:</p>
+                f"""\
+<p>ERROR: The Tor configuration file could not be written! Details:</p>
 <blockquote><pre>{str(e)}</pre></blockquote>""",
             )
             self.tor_conf_info = self.parse_torrc()
@@ -1171,8 +1179,8 @@ Details:</p>
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                f"""<p>ERROR: Gateway DNS configuration could not be adjusted!
-Details:</p>
+                f"""\
+<p>ERROR: Gateway DNS configuration could not be adjusted! Details:</p>
 <blockquote><pre>{dns_adjust_result}</pre></blockquote>""",
             )
 
@@ -1180,8 +1188,6 @@ Details:</p>
         self.config_ui_toggle(enable_ui=False)
         if should_restart_tor:
             self.restart_tor()
-
-        QApplication.restoreOverrideCursor()
 
     def cancel_configure_tor(self) -> None:
         """
@@ -1238,7 +1244,7 @@ Details:</p>
     # pylint: disable=too-many-locals, too-many-return-statements, too-many-branches
     def sync_config_ui_to_tor_conf_info(
         self, bridge_lines_maybe: list[str] | None = None
-    ) -> SyncConfigUiResult:
+    ) -> tuple[SyncConfigUiResult, str | None]:
         """
         Takes the settings in the configuration UI and places them into the
         tor_conf_info variable. Returns an enum value indicating either
@@ -1257,7 +1263,10 @@ Details:</p>
             tmp_tor_conf_info.bridges_enabled = True
         elif (
             self.bridges_type_combo_box.currentText()
-            == tcpl_bridge_type_none_str
+            ## We have to check for tcpl_bridge_type_custom_str too because the
+            ## user might have "configured" custom bridges but left the bridge
+            ## lines text area empty.
+            in (tcpl_bridge_type_none_str, tcpl_bridge_type_custom_str)
         ):
             tmp_tor_conf_info.bridges_enabled = False
         else:
@@ -1285,19 +1294,34 @@ Details:</p>
                 assert isinstance(bridge_str, str)
             bridge_lines_maybe = bridge_list
         if bridge_lines_maybe is not None:
-            tmp_tor_conf_info.bridge_line_list = bridge_lines_maybe
             for bridge_line in bridge_lines_maybe:
                 bridge_bit_list: list[str] = bridge_line.split(" ")
-                if not len(bridge_bit_list) > 1:
-                    return SyncConfigUiResult.BAD_BRIDGE_LINE
-                tmp_tor_conf_info.bridge_type_set.add(bridge_bit_list[1])
+                if not len(bridge_bit_list) > 0:
+                    return (
+                        SyncConfigUiResult.BAD_BRIDGE_LINE,
+                        f"Bridge line '{bridge_line}' contains too few "
+                        + "fields!",
+                    )
+                if not bridge_bit_list[0] in tcpl_bridge_type_list[1:-1]:
+                    return (
+                        SyncConfigUiResult.BAD_BRIDGE_LINE,
+                        f"Bridge line '{bridge_line}' specifies an unknown "
+                        + "bridge type!",
+                    )
+                tmp_tor_conf_info.bridge_type_set.add(bridge_bit_list[0])
+            ## We can pass bridge_lines_maybe "blindly" here, as we've already
+            ## indirectly verified that none of the first fields are the string
+            ## "Bridge".
+            tmp_tor_conf_info.bridge_line_list = tcpl_bridge_lines_add_prefix(
+                bridge_lines_maybe
+            )
 
         proxy_type: str = self.proxy_type_combo_box.currentText()
         if proxy_type != tcpl_proxy_type_none_str:
             tmp_tor_conf_info.proxy_type = proxy_type
             proxy_host: str = self.proxy_host_line_edit.text()
             if proxy_host == "":
-                return SyncConfigUiResult.PROXY_MISSING_HOST
+                return (SyncConfigUiResult.PROXY_MISSING_HOST, None)
             tmp_tor_conf_info.proxy_host = proxy_host
             proxy_port_str: str = self.proxy_port_line_edit.text()
             proxy_port: int
@@ -1307,32 +1331,49 @@ Details:</p>
                 try:
                     proxy_port = int(proxy_port_str)
                 except Exception:
-                    return SyncConfigUiResult.PROXY_PORT_NOT_INTEGER
+                    return (SyncConfigUiResult.PROXY_PORT_NOT_INTEGER, None)
             if not 1 <= proxy_port <= 65535:
-                return SyncConfigUiResult.PROXY_PORT_OUT_OF_RANGE
+                return (SyncConfigUiResult.PROXY_PORT_OUT_OF_RANGE, None)
             tmp_tor_conf_info.proxy_port = proxy_port
             proxy_username: str = self.proxy_user_line_edit.text()
             proxy_password: str = self.proxy_pass_line_edit.text()
             if proxy_username != "" or proxy_password != "":
                 if proxy_type == "SOCKS4":
-                    return SyncConfigUiResult.PROXY_DOES_NOT_SUPPORT_AUTH
+                    return (
+                        SyncConfigUiResult.PROXY_DOES_NOT_SUPPORT_AUTH,
+                        None,
+                    )
                 if proxy_type == "SOCKS5":
                     if proxy_password == "":
-                        return SyncConfigUiResult.PROXY_SOCKS5_USER_WITHOUT_PASS
+                        return (
+                            SyncConfigUiResult.PROXY_SOCKS5_USER_WITHOUT_PASS,
+                            None,
+                        )
                     if proxy_username == "":
-                        return SyncConfigUiResult.PROXY_SOCKS5_PASS_WITHOUT_USER
+                        return (
+                            SyncConfigUiResult.PROXY_SOCKS5_PASS_WITHOUT_USER,
+                            None,
+                        )
                     if not 1 <= len(proxy_username) <= 255:
-                        return SyncConfigUiResult.PROXY_SOCKS5_USER_LEN_BAD
+                        return (
+                            SyncConfigUiResult.PROXY_SOCKS5_USER_LEN_BAD,
+                            None,
+                        )
                     if not 1 <= len(proxy_password) <= 255:
-                        return SyncConfigUiResult.PROXY_SOCKS5_PASS_LEN_BAD
+                        return (
+                            SyncConfigUiResult.PROXY_SOCKS5_PASS_LEN_BAD,
+                            None,
+                        )
                 tmp_tor_conf_info.proxy_username = proxy_username
                 tmp_tor_conf_info.proxy_password = proxy_password
 
         self.tor_conf_info = tmp_tor_conf_info
-        return SyncConfigUiResult.SUCCESS
+        return (SyncConfigUiResult.SUCCESS, None)
 
     def check_notify_sync_config_ui_result(
-        self, sync_config_ui_result: SyncConfigUiResult
+        self,
+        sync_config_ui_result: SyncConfigUiResult,
+        sync_config_ui_msg: str | None,
     ) -> bool:
         """
         Checks a SyncConfigUiResult value. Pops up an error mesasge and returns
@@ -1343,68 +1384,77 @@ Details:</p>
             case SyncConfigUiResult.SUCCESS:
                 return True
             case SyncConfigUiResult.BAD_BRIDGE_LINE:
+                assert sync_config_ui_msg is not None
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: A provided custom bridge line is invalid!
-Please check your custom bridge lines and try again.</p>""",
+                    f"""\
+<p>ERROR: A provided custom bridge line is invalid! Details:</p>
+<blockquote><pre>{sync_config_ui_msg}</pre></blockquote>""",
                 )
             case SyncConfigUiResult.PROXY_MISSING_HOST:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: Proxy use was enabled, but no proxy server was
-specified in the 'Host' field!</p>""",
+                    """\
+<p>ERROR: Proxy use was enabled, but no proxy server was specified in the \
+'Host' field!</p>""",
                 )
             case SyncConfigUiResult.PROXY_PORT_NOT_INTEGER:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: The proxy port specified in the 'Port' field
-is not an integer!</p>""",
+                    """\
+<p>ERROR: The proxy port specified in the 'Port' field is not an \
+integer!</p>""",
                 )
             case SyncConfigUiResult.PROXY_PORT_OUT_OF_RANGE:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: The proxy port specified in the 'Port' field
-is out of range! It must be between 1 and 65535 inclusive.</p>""",
+                    """\
+<p>ERROR: The proxy port specified in the 'Port' field is out of range! It \
+must be between 1 and 65535 inclusive.</p>""",
                 )
             case SyncConfigUiResult.PROXY_DOES_NOT_SUPPORT_AUTH:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: The specified proxy type does not support
-authentication! Please clear the 'User' and 'Pass' fields and try
-again.</p>""",
+                    """\
+<p>ERROR: The specified proxy type does not support authentication! Please \
+clear the 'User' and 'Pass' fields and try again.</p>""",
                 )
             case SyncConfigUiResult.PROXY_SOCKS5_USER_WITHOUT_PASS:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: A proxy username was provided, but no
-password! SOCKS5 requires both when authenticating.""",
+                    """\
+<p>ERROR: A proxy username was provided, but no password! SOCKS5 requires \
+both when authenticating.""",
                 )
             case SyncConfigUiResult.PROXY_SOCKS5_PASS_WITHOUT_USER:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: A proxy password was provided, but no
-username! SOCKS5 requires both when authenticating.""",
+                    """\
+<p>ERROR: A proxy password was provided, but no username! SOCKS5 requires \
+both when authenticating.""",
                 )
             case SyncConfigUiResult.PROXY_SOCKS5_USER_LEN_BAD:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: The proxy username's length is out of range!
-It must be between 1 and 255 characters long.""",
+                    """\
+<p>ERROR: The proxy username's length is out of range! It must be between 1 \
+and 255 characters long.""",
                 )
             case SyncConfigUiResult.PROXY_SOCKS5_PASS_LEN_BAD:
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    """<p>ERROR: The proxy password's length is out of range!
-It must be between 1 and 255 characters long.""",
+                    """\
+<p>ERROR: The proxy password's length is out of range! It must be between 1 \
+and 255 characters long.""",
                 )
 
         return False
@@ -1439,9 +1489,8 @@ It must be between 1 and 255 characters long.""",
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                f"""<p>ERROR: Could not send NEWNYM message to Tor!
-Details:</p>
-
+                f"""\
+<p>ERROR: Could not send NEWNYM message to Tor! Details:</p>
 <blockquote><pre>{sanitize_string(str(e))}</pre></blockquote>""",
             )
 
@@ -1450,9 +1499,6 @@ Details:</p>
         Displays the appropriate log data depending on which one of the log
         radio buttons is checked.
         """
-
-        wait_cursor: QCursor = QCursor(Qt.CursorShape.WaitCursor)
-        QApplication.setOverrideCursor(wait_cursor)
 
         self.logs_text_edit.clear()
         display_text: str | None = None
@@ -1463,9 +1509,8 @@ Details:</p>
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    f"""<p>ERROR: Could not read '{str(tcpl_torrc_file)}'!
-Details:</p>
-
+                    f"""\
+<p>ERROR: Could not read '{str(tcpl_torrc_file)}'! Details:</p>
 <blockquote><pre>{sanitize_string(str(e))}</pre></blockquote>""",
                 )
         elif self.logs_tor_log_radio_button.isChecked():
@@ -1481,8 +1526,8 @@ Details:</p>
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    f"""<p>ERROR: Could not read Tor log! Details:</p>
-
+                    f"""\
+<p>ERROR: Could not read Tor log! Details:</p>
 <blockquote><pre>{sanitize_string(
     tor_log_info.stdout + tor_log_info.stderr
 )}</pre></blockquote>""",
@@ -1499,8 +1544,8 @@ Details:</p>
                 QMessageBox.warning(
                     self,
                     tcp_window_title,
-                    f"""<p>ERROR: Could not get Tor-related journal logs!
-Details:</p>
+                    f"""\
+<p>ERROR: Could not get Tor-related journal logs! Details:</p>
 <blockquote><pre>{sanitize_string(
     tor_journal_info.stdout + tor_journal_info.stderr
 )}</pre></blockquote>""",
@@ -1511,15 +1556,13 @@ Details:</p>
             QMessageBox.warning(
                 self,
                 tcp_window_title,
-                """<p>ERROR: No Tor log radio button is checked! Please report
-this bug!</p>""",
+                """\
+<p>ERROR: No Tor log radio button is checked! Please report this bug!</p>""",
             )
 
         if display_text is not None:
             self.logs_text_edit.setPlainText(display_text)
             self.logs_text_edit.moveCursor(QTextCursor.MoveOperation.End)
-
-        QApplication.restoreOverrideCursor()
 
 
 class SplashScreenDialog(QDialog):
@@ -1642,7 +1685,8 @@ class AppInitManager(QObject):
         QMessageBox.critical(
             None,
             tcp_window_title,
-            f"""<p>ERROR: Tor config is not sane! Details:</p>
+            f"""\
+<p>ERROR: Tor config is not sane! Details:</p>
 <blockquote><pre>{error_msg}</pre></blockquote>""",
         )
         sys.exit(1)
@@ -1659,9 +1703,9 @@ def open_link_maybe(link: str, parent: QWidget | None = None) -> None:
         QMessageBox.information(
             parent,
             tcp_window_title,
-            f"""<p>INFO: Whonix-Gateway cannot open links. Copy or type the
-following URL into a web browser on a Whonix-Workstation machine:</p>
-
+            f"""\
+<p>INFO: Whonix-Gateway cannot open links. Copy or type the following URL \
+into a web browser on a Whonix-Workstation machine:</p>
 <b>{link}</b>""",
         )
     else:

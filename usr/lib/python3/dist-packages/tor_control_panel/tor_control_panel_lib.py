@@ -446,7 +446,9 @@ def tcpl_default_port_for_protocol(protocol: str) -> int:
 ## TODO: Consider making it less painful to change our proxy name strings like
 ## "HTTP / HTTPS" in the future.
 # pylint: disable=too-many-return-statements, too-many-branches, too-many-statements
-def tcpl_parse_torrc() -> TcplTorConfInfo | str:
+def tcpl_parse_torrc(
+    torrc_file: Path = tcpl_torrc_file,
+) -> TcplTorConfInfo | str:
     """
     Parses the Tor Control Panel torrc file. Note that this does NOT include
     information about any other configuration files, including files that may
@@ -460,14 +462,14 @@ def tcpl_parse_torrc() -> TcplTorConfInfo | str:
     )
     assert isinstance(tor_conf_info, TcplTorConfInfo)
 
-    if not tcpl_torrc_file.is_file():
+    if not torrc_file.is_file():
         return (
-            f"Cannot read Tor configuration, file {str(tcpl_torrc_file)} does "
+            f"Cannot read Tor configuration, file '{str(torrc_file)}' does "
             + "not exist!"
         )
 
     comment_re: re.Pattern[str] = re.compile(r"\s*#")
-    torrc_contents: str = tcpl_torrc_file.read_text(encoding="utf-8")
+    torrc_contents: str = torrc_file.read_text(encoding="utf-8")
     for torrc_line in torrc_contents.split("\n"):
         if comment_re.match(torrc_line):
             continue
@@ -563,9 +565,8 @@ def tcpl_parse_torrc() -> TcplTorConfInfo | str:
                         "Proxy authentication configured multiple times, or "
                         + "when inappropriate!"
                     )
-                auth_bit_list: list[str] = torrc_bit_list[1].split(
-                    ":", maxsplit=1
-                )
+                auth_info: str = " ".join(torrc_bit_list[1:])
+                auth_bit_list: list[str] = auth_info.split(":", maxsplit=1)
                 if len(auth_bit_list) != 2:
                     return (
                         "No password provided to " + "HTTPSProxyAuthenticator!"
@@ -590,7 +591,7 @@ def tcpl_parse_torrc() -> TcplTorConfInfo | str:
                 if tor_conf_info.proxy_username is not None:
                     return "Proxy authentication configured multiple times!"
                 proxy_auth_type = "SOCKS5"
-                tor_conf_info.proxy_username = torrc_bit_list[1]
+                tor_conf_info.proxy_username = " ".join(torrc_bit_list[1:])
             case "Socks5ProxyPassword":
                 if not len(torrc_bit_list) == 2:
                     return (
@@ -605,7 +606,9 @@ def tcpl_parse_torrc() -> TcplTorConfInfo | str:
                 if tor_conf_info.proxy_password is not None:
                     return "Proxy authentication configured multiple times!"
                 proxy_auth_type = "SOCKS5"
-                tor_conf_info.proxy_password = torrc_bit_list[1]
+                tor_conf_info.proxy_password = " ".join(torrc_bit_list[1:])
+            case _:
+                return f"Unrecognized config command '{torrc_bit_list[0]}'!"
 
     tor_conf_info = tcpl_make_tor_conf_info_sane(tor_conf_info, proxy_auth_type)
 
@@ -643,8 +646,8 @@ UseBridges {"1" if len(tor_conf_info.bridge_line_list) > 0 else "0"}
         assert bridge_type in tcpl_bridge_transport_dict
         if bridge_type not in seen_bridge_type_list:
             seen_bridge_type_list.append(bridge_type)
-            client_transport_block += f"""ClientTransportPlugin {bridge_type} {
-tcpl_bridge_transport_dict[bridge_type]}
+            client_transport_block += f"""\
+ClientTransportPlugin {bridge_type} {tcpl_bridge_transport_dict[bridge_type]}
 """
         bridge_block += f"{bridge_line}\n"
     torrc_contents += f"{client_transport_block}{bridge_block}"
@@ -652,15 +655,15 @@ tcpl_bridge_transport_dict[bridge_type]}
         case "HTTP / HTTPS":
             assert tor_conf_info.proxy_host is not None
             assert tor_conf_info.proxy_port is not None
-            torrc_contents += f"""HTTPSProxy {tor_conf_info.proxy_host}:{
-str(tor_conf_info.proxy_port)}
+            torrc_contents += f"""\
+HTTPSProxy {tor_conf_info.proxy_host}:{str(tor_conf_info.proxy_port)}
 """
             if (
                 tor_conf_info.proxy_username is not None
                 or tor_conf_info.proxy_password is not None
             ):
-                torrc_contents += f"""HTTPSProxyAuthenticator {
-tor_conf_info.proxy_username
+                torrc_contents += f"""\
+HTTPSProxyAuthenticator {tor_conf_info.proxy_username
 if tor_conf_info.proxy_username is not None
 else ""}:{tor_conf_info.proxy_password
 if tor_conf_info.proxy_password is not None
@@ -669,57 +672,63 @@ else ""}
         case "SOCKS4":
             assert tor_conf_info.proxy_host is not None
             assert tor_conf_info.proxy_port is not None
-            torrc_contents += f"""Socks4Proxy {tor_conf_info.proxy_host}:{
-str(tor_conf_info.proxy_port)}
+            torrc_contents += f"""\
+Socks4Proxy {tor_conf_info.proxy_host}:{str(tor_conf_info.proxy_port)}
 """
         case "SOCKS5":
             assert tor_conf_info.proxy_host is not None
             assert tor_conf_info.proxy_port is not None
-            torrc_contents += f"""Socks5Proxy {tor_conf_info.proxy_host}:{
-str(tor_conf_info.proxy_port)}
+            torrc_contents += f"""\
+Socks5Proxy {tor_conf_info.proxy_host}:{str(tor_conf_info.proxy_port)}
 """
             if (
                 tor_conf_info.proxy_username is not None
                 and tor_conf_info.proxy_password is not None
             ):
-                torrc_contents += f"""Socks5ProxyUsername {
-tor_conf_info.proxy_username}
-Socks5ProxyPassword {
-tor_conf_info.proxy_password}
+                torrc_contents += f"""\
+Socks5ProxyUsername {tor_conf_info.proxy_username}
+Socks5ProxyPassword {tor_conf_info.proxy_password}
 """
 
     write_exec_obj: subprocess.Popen[str] = tcpl_run_privileged_task_async(
         "tcp-write-torrc"
     )
-    fifo_wait_count: int = 0
-    ## Technically this should be a tri-state but this is easier.
-    fifo_found: bool = False
-    fifo_writable: bool = False
-    while fifo_wait_count < 10:
-        time.sleep(0.1)
-        fifo_wait_count += 1
-        if tcpl_torrc_comm_fifo.is_fifo():
-            fifo_found = True
-            if os.access(tcpl_torrc_comm_fifo, os.W_OK):
-                fifo_writable = True
-                break
-    if not fifo_found:
-        raise FileNotFoundError(
-            f"No comm FIFO at '{str(tcpl_torrc_comm_fifo)}'!"
-        )
-    if not fifo_writable:
-        raise PermissionError(
-            f"Cannot write to comm FIFO at '{str(tcpl_torrc_comm_fifo)}'!"
-        )
-    tcpl_torrc_comm_fifo.write_text(torrc_contents, encoding="utf-8")
+    try:
+        fifo_wait_count: int = 0
+        ## Technically this should be a tri-state but this is easier.
+        fifo_found: bool = False
+        fifo_writable: bool = False
+        while fifo_wait_count < 10:
+            time.sleep(0.1)
+            fifo_wait_count += 1
+            if tcpl_torrc_comm_fifo.is_fifo():
+                fifo_found = True
+                if os.access(tcpl_torrc_comm_fifo, os.W_OK):
+                    fifo_writable = True
+                    break
+        if not fifo_found:
+            raise FileNotFoundError(
+                f"No comm FIFO at '{str(tcpl_torrc_comm_fifo)}'!"
+            )
+        if not fifo_writable:
+            raise PermissionError(
+                f"Cannot write to comm FIFO at '{str(tcpl_torrc_comm_fifo)}'!"
+            )
+        tcpl_torrc_comm_fifo.write_text(torrc_contents, encoding="utf-8")
 
-    stdout_data: str
-    stderr_data: str
-    stdout_data, stderr_data = write_exec_obj.communicate()
-    if write_exec_obj.returncode != 0:
-        raise RuntimeError(
-            f"Torrc file write failed: {stdout_data + stderr_data}"
-        )
+        stdout_data: str
+        stderr_data: str
+        try:
+            stdout_data, stderr_data = write_exec_obj.communicate(timeout=1)
+        except Exception:
+            # pylint: disable=raise-missing-from
+            raise RuntimeError("Torrc file write timed out!")
+        if write_exec_obj.returncode != 0:
+            raise RuntimeError(
+                f"Torrc file write failed: {stdout_data + stderr_data}"
+            )
+    finally:
+        write_exec_obj.terminate()
 
 
 def tcpl_adjust_etc_resolv_conf(bridge_line_list: list[str]) -> str | None:
