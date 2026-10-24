@@ -65,6 +65,8 @@ from PyQt6.QtWidgets import (
 
 from sanitize_string.sanitize_string_lib import sanitize_string
 
+from guimessages.check_display import exit_if_no_gui
+
 from .tor_control_panel_lib import (
     TcplTorConfInfo,
     TcplTorStatus,
@@ -1733,6 +1735,11 @@ def main() -> NoReturn:
             file=sys.stderr,
         )
         sys.exit(1)
+
+    # Exit cleanly (0) on a machine with no display. Constructing a
+    # QApplication headless SIGABRTs (exit 134) via an uncatchable C++
+    # qFatal, so guard before it rather than let that crash happen.
+    exit_if_no_gui()
 
     app: QApplication = QApplication(sys.argv)
 
