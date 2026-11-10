@@ -1,0 +1,61 @@
+#!/bin/bash
+
+## Copyright (C) 2023 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+set -o errexit
+set -o nounset
+set -o errtrace
+set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
+
+# shellcheck source=../../../../helper-scripts/usr/libexec/helper-scripts/lockfile.sh
+source "${HELPER_SCRIPTS_PATH:-}/usr/libexec/helper-scripts/lockfile.sh"
+
+true "$0: START"
+
+tcp_comm_dir='/run/tor-control-panel'
+tcp_comm_fifo="${tcp_comm_dir}/tcp-write-torrc.fifo"
+local_torrc_d='/usr/local/etc/torrc.d'
+torrc_file_path="${local_torrc_d}/40_tor_control_panel.conf"
+torrc_temp_file_path="${torrc_file_path}.tcp-tmp"
+fifo_client_uid="${PRIVLEAP_CALLER_UID:-}"
+
+exithandler() {
+  safe-rm --force -- "${tcp_comm_fifo}"
+  safe-rm --force -- "${torrc_temp_file_path}"
+}
+trap exithandler EXIT
+
+if [ -z "${fifo_client_uid}" ]; then
+  printf '%s\n' "$0: ERROR: Cannot get client UID!"
+  exit 1
+fi
+mkdir --parents -- "${tcp_comm_dir}" || exit 1
+safe-rm --force -- "${tcp_comm_fifo}" || exit 1
+mkfifo --mode=0600 -- "${tcp_comm_fifo}" || exit 1
+chown -- "${fifo_client_uid}:root" "${tcp_comm_fifo}" || exit 1
+
+mkdir --parents --verbose -- "${local_torrc_d}"
+cat -- "${tcp_comm_fifo}" > "${torrc_temp_file_path}" &
+wait "$!"
+
+if ! [ -s "${torrc_temp_file_path}" ]; then
+  printf '%s\n' "$0: ERROR: No Tor configuration provided by client!" >&2
+  exit 1
+fi
+if ! unicode-show -- "${torrc_temp_file_path}" >/dev/null 2>&1 ; then
+  printf '%s\n' "$0: ERROR: Tor configuration contains potentially malicious Unicode!" >&2
+fi
+if ! validate_output="$(/usr/libexec/tor-control-panel/tcp-validate-torrc "${torrc_temp_file_path}" 2>&1)" ; then
+  printf '%s\n' "$0: ERROR: ${validate_output}"
+fi
+
+mv -- "${torrc_temp_file_path}" "${torrc_file_path}"
+
+## Default ownership may be too restrictive.
+chmod --verbose 644 -- "${torrc_file_path}"
+
+true "$0: END"

@@ -1,0 +1,7 @@
+#!/usr/bin/python3 -Bsu
+
+## Copyright (c) 2026 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
+## See the file COPYING for copying conditions.
+
+from tor_control_panel import tcp_validate_torrc
+tcp_validate_torrc.main()

@@ -1,4 +1,4 @@
-## Copyright (C) 2012 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@kicksecure.com>
+## Copyright (C) 2012 - 2026 ENCRYPTED SUPPORT LLC <adrelanos@kicksecure.com>
 ## See the file COPYING for copying conditions.
 
 Source: tor-control-panel
@@ -20,11 +20,9 @@ Depends: helper-scripts,
          mate-polkit,
          privleap,
          python3,
-         python3-ipy,
-         python3-pyqt5,
+         python3-pyqt6,
          python3-stem,
          python3-yaml,
-         qtwayland5,
          ${misc:Depends}
 Breaks: anon-connection-wizard (<< 1:11.5-1)
 Replaces: anon-connection-wizard (<< 1:11.5-1)
@@ -33,20 +31,12 @@ Recommends: obfs4proxy, tor
 Description: Tor Control Graphical User Interfaces
  WARNING: Not (yet) a standalone ready to use outside of Whonix:
  .
- anon-connection-wizard (ACW) is a Tor-launcher-like application that helps
- users in different Internet environments connect to the Tor network. It helps
- user to configure Tor to use a proxy and/or Tor bridges. This application is
- especially useful for system Tor users who would like to run the standalone
- core Tor with different torified applications. The wizard can be run at any
- time to change the connection configuration.
+ tor-control-panel is a Tor controller. It helps users to configure Tor to use
+ a proxy and/or Tor bridges. It can also stop and restart Tor, display Tor
+ logs, launch onioncircuits to view active Tor circuits, and send NEWNYM
+ signals to Tor to request new circuits to be used for all new connections.
  .
- tor-control-panel is a Tor controller. It provides the same functionality as
- anon-connection-wizard, but in an "expert mode" user interface that is much
- faster to use. It can also stop and restart Tor, display Tor logs, launch
- onioncircuits to view active Tor circuits, and send NEWNYM signals to Tor to
- request new circuits to be used for all new connections.
- .
- Both tools create and modify a Tor settings file:
+ It creates and modifies a Tor settings file:
  `/usr/local/etc/torrc.d/40_tor_control_panel.conf`
  .
  tor-control-panel is produced independently from the Tor anonymity
