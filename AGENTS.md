@@ -11,9 +11,11 @@ python3-stem, PyQt6 for the offscreen GUI):
 ## Settled design decisions (do not re-report)
 
 - The debug `print(self.tor_conf_info)` in tor_control_panel.py is intentional
-  while the project is in active development. tor-control-panel does not log to
-  the journal, so it is not a credential leak; it is commented out, not removed,
-  once no longer needed.
+  while the project is in active development; it is commented out, not removed,
+  once no longer needed. It is NOT a credential leak because
+  `TcplTorConfInfo.__repr__` redacts `proxy_password` (a .desktop-launched GUI's
+  stdout IS captured by the systemd user journal, so the object must stay safe
+  to print). Guarded by test_redact_credentials in the dist-ai suite.
 - tcp-write-torrc does not re-check the comm FIFO in-script. The mitigation is the
   root-owned 0755 /run/tor-control-panel directory; an in-script re-check does not
   prevent a TOCTOU and adds little value.

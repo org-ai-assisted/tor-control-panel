@@ -229,6 +229,30 @@ class TcplTorConfInfo:
     proxy_username: str | None
     proxy_password: str | None
 
+    def __repr__(self) -> str:
+        ## Redact proxy_password so printing / logging this object cannot leak
+        ## the credential (CWE-532). The development trace in
+        ## tor_control_panel.py prints this object, and stdout/stderr of a
+        ## .desktop-launched GUI is captured by the systemd user journal. None
+        ## stays visible so "is a password set?" survives; a set value is
+        ## masked. Only __repr__ is redacted: field access (torrc generation),
+        ## __eq__ and the fields themselves are untouched.
+        password_repr: str = (
+            "None" if self.proxy_password is None else "'[REDACTED]'"
+        )
+        return (
+            f"{type(self).__name__}("
+            f"network_enabled={self.network_enabled!r}, "
+            f"bridges_enabled={self.bridges_enabled!r}, "
+            f"bridge_type_set={self.bridge_type_set!r}, "
+            f"bridge_line_list={self.bridge_line_list!r}, "
+            f"proxy_type={self.proxy_type!r}, "
+            f"proxy_host={self.proxy_host!r}, "
+            f"proxy_port={self.proxy_port!r}, "
+            f"proxy_username={self.proxy_username!r}, "
+            f"proxy_password={password_repr})"
+        )
+
 
 tcpl_blank_tor_conf_info: TcplTorConfInfo = TcplTorConfInfo(
     network_enabled=None,
